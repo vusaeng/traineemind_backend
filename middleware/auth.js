@@ -7,8 +7,11 @@ export default async function auth(req, res, next) {
     if (!token) return res.status(401).json({ error: "Missing token" });
 
     const payload = verifyToken(token);
+    console.log(payload);
+
     const user = await User.findById(payload.sub);
-    if (!user || !user.isActive) return res.status(401).json({ error: "Unauthorized" });
+    if (!user || !user.isActive)
+      return res.status(401).json({ error: "Unauthorized" });
 
     req.user = { id: user._id.toString(), role: user.role };
     next();

@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema(
     verified: { type: Boolean, default: false },
     verificationToken: String,
     verificationExpires: Date,
-    lastLoginAt: { type: Date },
+    lastLogin: { type: Date },
   },
   { timestamps: true }
 );

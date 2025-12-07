@@ -12,26 +12,46 @@ const router = Router();
 
 router.use(auth, roles("admin"));
 
+// Uploads
 router.post("/upload/video", uploadVideo.single("video"), (req, res) => {
-  res.status(201).json({ filename: req.file.filename, url: `/uploads/videos/${req.file.filename}` });
+  if (!req.file) return res.status(400).json({ error: "No video uploaded" });
+  res.status(201).json({
+    filename: req.file.filename,
+    url: `/uploads/videos/${req.file.filename}`,
+  });
 });
 
 router.post("/upload/image", uploadImage.single("image"), (req, res) => {
-  res.status(201).json({ filename: req.file.filename, url: `/uploads/images/${req.file.filename}` });
+  if (!req.file) return res.status(400).json({ error: "No image uploaded" });
+  res.status(201).json({
+    filename: req.file.filename,
+    url: `/uploads/images/${req.file.filename}`,
+  });
 });
 
+// Content
+router.get("/content", ContentController.list);
+router.get("/content/:idOrSlug", ContentController.detail);
 router.post("/content", ContentController.create);
 router.patch("/content/:id", ContentController.update);
 router.delete("/content/:id", ContentController.remove);
-router.post("/content/:id/publish", ContentController.publishToggle);
+router.patch("/content/:id/publish", ContentController.publishToggle);
 
+// Categories
+router.get("/categories", CategoriesController.list);
 router.post("/categories", CategoriesController.create);
 router.patch("/categories/:id", CategoriesController.update);
 router.delete("/categories/:id", CategoriesController.remove);
 
+// Users
 router.get("/users", UsersController.list);
+router.get("/users/:id", UsersController.detail);
 router.patch("/users/:id", UsersController.update);
+router.patch("/users/:id/status", UsersController.toggleActive);
+router.patch("/users/:id/role", UsersController.toggleRole);
+router.delete("/users/:id", UsersController.remove);
 
+// Analytics
 router.get("/analytics/overview", AnalyticsController.overview);
 
 export default router;

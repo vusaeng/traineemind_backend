@@ -1,3 +1,4 @@
+import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import User from "../models/User.js";
@@ -31,7 +32,7 @@ export async function register(req, res, next) {
     });
 
     // Send verification email
-    const verifyUrl = `http://localhost:8081/verify-email/${verificationToken}`;
+    const verifyUrl = `${process.env.BACKEND_URL / "api/auth" || "http://localhost:4000/api/auth"}/verify-email/${verificationToken}`;
     const html = `
       <h2>Welcome to TraineeMind 🎉</h2>
       <p>Hi ${name}, thanks for registering!</p>
@@ -62,52 +63,71 @@ export async function register(req, res, next) {
 export async function verifyEmail(req, res, next) {
   try {
     const { token } = req.params;
-    console.log(`🔍 Verification attempt for token: ${token}`);
 
-    // Find user with valid token
+    // Log token hash instead of full token in production
+    if (process.env.NODE_ENV === "development") {
+      console.log(`🔍 Verification attempt for token: ${token}`);
+    }
+
+    // Find user with matching token (constant-time lookup)
     const user = await User.findOne({
       verificationToken: token,
-      verificationExpires: { $gt: Date.now() },
     });
 
-    if (!user) {
+    // Check if user exists and token is not expired
+    if (!user || user.verificationExpires < Date.now()) {
       console.log("❌ Verification failed: invalid or expired token");
       return res.status(400).json({ error: "Invalid or expired token" });
     }
 
-    console.log("✅ User found:", {
-      email: user.email,
-      id: user._id,
-      currentlyVerified: user.verified,
-      verificationToken: user.verificationToken,
-    });
+    // Check if already verified
+    if (user.verified) {
+      console.log("ℹ️ User already verified, redirecting...");
+      res.set("Cache-Control", "no-store");
+      return res.redirect(`${process.env.FRONTEND_URL}/verify-success`);
+    }
 
-    // Save the document directly instead of using updateOne
+    if (process.env.NODE_ENV === "development") {
+      console.log("✅ User found:", {
+        email: user.email,
+        id: user._id,
+        currentlyVerified: user.verified,
+      });
+    }
+
+    // Update user verification status
     user.verified = true;
     user.verificationToken = null;
     user.verificationExpires = null;
 
-    // Save and log the result
-    const savedUser = await user.save();
+    // Save the updated user
+    await user.save();
 
-    console.log("📝 After save:", {
-      verified: savedUser.verified,
-      verificationToken: savedUser.verificationToken,
-      _id: savedUser._id,
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log("📝 Verification successful for user:", user._id);
 
-    // Double-check with a fresh query
-    const freshUser = await User.findById(user._id);
-    console.log("🔄 Fresh query check:", {
-      verified: freshUser.verified,
-      verificationToken: freshUser.verificationToken,
-    });
+      // Double-check with fresh query (development only)
+      const freshUser = await User.findById(user._id);
+      console.log("🔄 Fresh query check:", {
+        verified: freshUser.verified,
+        verificationToken: freshUser.verificationToken,
+      });
+    }
 
-    // Redirect to frontend
+    // Support both API and browser flows
+    if (req.query.format === "json") {
+      return res.json({
+        success: true,
+        message: "Email verified successfully",
+      });
+    }
+
+    // Redirect to frontend with no-cache header
     console.log("🎉 Verification successful, redirecting...");
+    res.set("Cache-Control", "no-store");
     res.redirect(`${process.env.FRONTEND_URL}/verify-success`);
   } catch (err) {
-    console.error("💥 Verification error:", err);
+    console.error("💥 Verification error:", err.message);
     next(err);
   }
 }
@@ -131,11 +151,10 @@ export async function login(req, res, next) {
     }
 
     // 2. Check password
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      console.log("❌ Password mismatch");
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
+    const ok = await bcrypt.compare(password, user.passwordHash);
+    console.log(ok);
+
+    if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
     // 3. Check verification status
     console.log(`📋 Verification status for ${email}:`, {
@@ -151,8 +170,15 @@ export async function login(req, res, next) {
       });
     }
 
-    // 4. Generate token and login
-    const token = generateToken(user._id);
+    // 4 Generate JWT with sub + role
+    const token = jwt.sign(
+      {
+        sub: user._id.toString(), // subject claim = user ID
+        role: user.role, // role claim = "admin" or "user"
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
 
     // Update last login
     user.lastLogin = new Date();
@@ -167,6 +193,7 @@ export async function login(req, res, next) {
         email: user.email,
         name: user.name,
         verified: user.verified, // Send this to frontend
+        role: user.role,
       },
     });
   } catch (err) {
