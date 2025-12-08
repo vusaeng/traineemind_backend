@@ -1,70 +1,129 @@
-// src/controllers/content.controller.js
-import Content from "../models/Content.js";
+import User from "../models/User.js";
 
-const slugify = (s) =>
-  s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
+/**
+ * List users with optional search and pagination
+ * GET /api/admin/users
+ */
+export async function list(req, res, next) {
+  const {
+    page = 1,
+    limit = 10,
+    q,
+    sortBy = "createdAt",
+    order = "desc",
+  } = req.query;
 
-export async function create(req, res, next) {
-  try {
-    const { type, title, excerpt, body, categories, tags, video, project } =
-      req.body;
-    const slug = slugify(title);
-    const exists = await Content.findOne({ slug });
-    if (exists) return res.status(409).json({ error: "Duplicate slug" });
-
-    const content = await Content.create({
-      type,
-      title,
-      slug,
-      excerpt,
-      body,
-      author: req.user.id,
-      categories,
-      tags,
-      video,
-      project,
-    });
-    res.status(201).json({ content });
-  } catch (err) {
-    next(err);
+  const filter = {};
+  if (q) {
+    filter.$or = [
+      { name: { $regex: q, $options: "i" } },
+      { email: { $regex: q, $options: "i" } },
+    ];
   }
+
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const sort = { [sortBy]: order === "asc" ? 1 : -1 };
+
+  const [users, total] = await Promise.all([
+    User.find(filter)
+      .select("name email role isActive createdAt lastLogin")
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit)),
+    User.countDocuments(filter),
+  ]);
+
+  res.json({
+    users,
+    pagination: {
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      pages: Math.ceil(total / limit),
+    },
+  });
 }
 
+/**
+ * Update a user’s role or active status
+ * PATCH /api/admin/users/:id
+ */
 export async function update(req, res, next) {
   try {
-    const update = { ...req.body };
-    if (update.title) update.slug = slugify(update.title);
-    const content = await Content.findByIdAndUpdate(req.params.id, update, {
+    const { role, isActive } = req.body;
+
+    const update = {};
+    if (role) update.role = role;
+    if (typeof isActive === "boolean") update.isActive = isActive;
+
+    const user = await User.findByIdAndUpdate(req.params.id, update, {
       new: true,
-    });
-    if (!content) return res.status(404).json({ error: "Not found" });
-    res.json({ content });
+    }).select("-passwordHash");
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    res.json({ user });
   } catch (err) {
     next(err);
   }
 }
 
+// ✅ Get single user by ID or slug
+export async function detail(req, res, next) {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id).select("-passwordHash");
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    res.json({ user });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** Delete user by id */
 export async function remove(req, res, next) {
   try {
-    const content = await Content.findByIdAndDelete(req.params.id);
-    if (!content) return res.status(404).json({ error: "Not found" });
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
     res.status(204).send();
   } catch (err) {
     next(err);
   }
 }
 
-export async function publishToggle(req, res, next) {
+/** Toggle user active status */
+
+export async function toggleActive(req, res, next) {
   try {
-    const content = await Content.findById(req.params.id);
-    if (!content) return res.status(404).json({ error: "Not found" });
-    content.isPublished = !content.isPublished;
-    content.publishedAt = content.isPublished ? new Date() : null;
-    await content.save();
-    res.json({ content });
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    user.isActive = !user.isActive;
+    await user.save();
+    res.json({ user });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function toggleRole(req, res, next) {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    user.role = user.role === "user" ? "admin" : "user";
+    await user.save();
+    res.json({ user });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export default async function create(req, reset, next) {
+  try {
+    const { name, email, password, role } = req.body;
+    const user = new User({ name, email, passwordHash: password, role });
+    await user.save();
+    res.status(201).json({ user });
   } catch (err) {
     next(err);
   }

@@ -2,18 +2,19 @@
 import { Router } from "express";
 import auth from "../middleware/auth.js";
 import roles from "../middleware/roles.js";
-import { uploadVideo, uploadImage } from "../middleware/upload.js";
+import { upload } from "../middleware/upload.js";
 import * as ContentController from "../controllers/content.controller.js";
 import * as CategoriesController from "../controllers/categories.controller.js";
-import * as UsersController from "../controllers/users.controller.js";
+import * as UsersController from "../controllers/admin.controller.js";
 import * as AnalyticsController from "../controllers/analytics.controller.js";
+import * as TutorialController from "../controllers/tutorial.controller.js";
 
 const router = Router();
 
 router.use(auth, roles("admin"));
 
 // Uploads
-router.post("/upload/video", uploadVideo.single("video"), (req, res) => {
+router.post("/upload/video", upload.single("video"), (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No video uploaded" });
   res.status(201).json({
     filename: req.file.filename,
@@ -21,7 +22,7 @@ router.post("/upload/video", uploadVideo.single("video"), (req, res) => {
   });
 });
 
-router.post("/upload/image", uploadImage.single("image"), (req, res) => {
+router.post("/upload/image", upload.single("image"), (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No image uploaded" });
   res.status(201).json({
     filename: req.file.filename,
@@ -31,8 +32,18 @@ router.post("/upload/image", uploadImage.single("image"), (req, res) => {
 
 // Content
 router.get("/content", ContentController.list);
+router.get("/tutorials", TutorialController.list);
 router.get("/content/:idOrSlug", ContentController.detail);
+router.get("/tutorials/:slug", TutorialController.detail);
 router.post("/content", ContentController.create);
+router.post(
+  "/tutorials",
+  upload.fields([
+    { name: "video", maxCount: 1 },
+    { name: "thumbnail", maxCount: 1 },
+  ]),
+  TutorialController.createTutorial
+);
 router.patch("/content/:id", ContentController.update);
 router.delete("/content/:id", ContentController.remove);
 router.patch("/content/:id/publish", ContentController.publishToggle);

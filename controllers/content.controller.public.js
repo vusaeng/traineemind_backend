@@ -1,6 +1,12 @@
 import Content from "../models/Content.js";
 import { buildPagination } from "../utils/pagination.js";
 
+const slugify = (s) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+
 /**
  * List published content with search, filters, and pagination
  * GET /api/content
@@ -13,10 +19,13 @@ export async function list(req, res, next) {
       categories,
       tags,
       sortBy = "publishedAt",
-      order = "desc"
+      order = "desc",
     } = req.query;
 
-    const { page, limit, skip } = buildPagination(req.query.page, req.query.limit);
+    const { page, limit, skip } = buildPagination(
+      req.query.page,
+      req.query.limit
+    );
 
     const filter = {};
     if (q) filter.$text = { $search: q };
@@ -34,7 +43,7 @@ export async function list(req, res, next) {
         .limit(limit)
         .select("-project.files") // exclude heavy project files in list
         .lean(),
-      Content.countDocuments(filter)
+      Content.countDocuments(filter),
     ]);
 
     res.json({
@@ -42,7 +51,7 @@ export async function list(req, res, next) {
       page,
       limit,
       total,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(total / limit),
     });
   } catch (err) {
     next(err);
@@ -57,7 +66,7 @@ export async function getBySlug(req, res, next) {
   try {
     const content = await Content.findOne({
       slug: req.params.slug,
-      isPublished: true
+      isPublished: true,
     })
       .populate("author", "name")
       .populate("categories", "name slug")

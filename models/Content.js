@@ -10,6 +10,9 @@ const contentSchema = new mongoose.Schema(
     title: { type: String, required: true },
     slug: { type: String, required: true, unique: true },
     body: { type: String },
+    author: { type: mongoose.Schema.Types.ObjectId, ref: "Admin" },
+    excerpt: { type: String },
+    tags: [String],
     categories: [{ type: mongoose.Schema.Types.ObjectId, ref: "Category" }],
     video: {
       url: String,
