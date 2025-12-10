@@ -5,18 +5,37 @@ import mongoose from "mongoose";
 
 export async function createTutorial(req, res, next) {
   try {
-    const { title, excerpt, body, categories, tags, project } = req.body;
+    const {
+      title,
+      excerpt,
+      body,
+      categories,
+      tags,
+      project,
+      videoUrl,
+      thumbnailUrl,
+      provider,
+    } = req.body;
+
+    // Handle video URL from either req.body.videoUrl OR req.body.video.url
+    let finalVideoUrl = videoUrl;
+    let finalThumbnailUrl = thumbnailUrl;
+    let finalProvider = provider || "youtube";
+
+    // Check if video data is nested
+    if (req.body.video && req.body.video.url) {
+      finalVideoUrl = req.body.video.url;
+      finalThumbnailUrl = req.body.video.thumbnailUrl;
+      finalProvider = req.body.video.provider || finalProvider;
+    }
 
     // Convert category names to ObjectIds
     let categoryIds = [];
     if (categories && categories.length) {
-      categoryIds = await Promise.all(
-        categories.map(async (cat) => {
-          const found = await Category.findOne({ name: cat });
-          return found ? found._id : null;
-        })
+      // Filter valid ObjectIds
+      categoryIds = categories.filter((cat) =>
+        mongoose.Types.ObjectId.isValid(cat)
       );
-      categoryIds = categoryIds.filter(Boolean);
     }
 
     const slug = slugify(title);
@@ -41,11 +60,11 @@ export async function createTutorial(req, res, next) {
       video: {
         url: videoFile
           ? `/uploads/videos/${videoFile.filename}`
-          : req.body.videoUrl,
+          : finalVideoUrl, // Use the extracted URL
         thumbnailUrl: thumbnailFile
           ? `/uploads/thumbnails/${thumbnailFile.filename}`
-          : req.body.thumbnailUrl,
-        provider: videoFile ? "selfhosted" : req.body.provider || "youtube",
+          : finalThumbnailUrl, // Use the extracted thumbnail URL
+        provider: videoFile ? "selfhosted" : finalProvider,
         durationSec: req.body.durationSec,
         transcript: req.body.transcript,
         quality: req.body.quality || ["720p"],
@@ -75,40 +94,41 @@ export async function createTutorial(req, res, next) {
   }
 } */
 
-
-  // Quick fix for the cast error
+// Quick fix for the cast error
 export async function detail(req, res, next) {
   try {
     const { slug } = req.params;
-    
+
     // First, just get the tutorial without populate
     const tutorial = await Content.findOne({ slug }).lean();
-    
+
     if (!tutorial) {
-      return res.status(404).json({ message: 'Tutorial not found' });
+      return res.status(404).json({ message: "Tutorial not found" });
     }
-    
+
     // If categories exist and are ObjectIds, populate them
     if (tutorial.categories && tutorial.categories.length > 0) {
       // Check if first category is an ObjectId
-      const isObjectId = mongoose.Types.ObjectId.isValid(tutorial.categories[0]);
-      
+      const isObjectId = mongoose.Types.ObjectId.isValid(
+        tutorial.categories[0]
+      );
+
       if (isObjectId) {
         const populatedTutorial = await Content.findOne({ slug })
-          .populate('categories')
-          .populate('video')
+          .populate("categories")
+          .populate("video")
           .lean();
         return res.json({ tutorial: populatedTutorial });
       }
     }
-    
+
     // Otherwise just return the tutorial as-is
     res.json({ tutorial });
   } catch (error) {
-    console.error('Error fetching tutorial:', error);
+    console.error("Error fetching tutorial:", error);
     res.status(500).json({ message: error.message });
   }
-};
+}
 
 export async function list(req, res, next) {
   const buildPagination = (page = 1, limit = 10) => {
@@ -153,6 +173,103 @@ export async function list(req, res, next) {
       total,
       totalPages: Math.ceil(total / limit),
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/* Route PATCH /tutorial/:slug  */
+
+export async function updateTutorial(req, res, next) {
+  try {
+    const { slug } = req.params;
+
+    // Filter by both slug and type: "video" to ensure we're getting a tutorial
+    const tutorial = await Content.findOne({ slug, type: "video" });
+
+    // In your controller, add more debugging:
+    console.log("Looking for slug:", slug);
+
+    if (!tutorial) {
+      return res.status(404).json({ error: "Tutorial not found" });
+    }
+
+    const { title, excerpt, body, categories, tags, project, video } = req.body;
+
+    // Update title and slug if title changed
+    if (title && title !== tutorial.title) {
+      const newSlug = slugify(title);
+
+      // Check if new slug already exists for videos
+      const slugExists = await Content.findOne({
+        slug: newSlug,
+        type: "video", // Also check type here
+        _id: { $ne: tutorial._id },
+      });
+
+      if (slugExists) {
+        return res.status(409).json({
+          error: "A tutorial with this title already exists",
+        });
+      }
+
+      tutorial.title = title;
+      tutorial.slug = newSlug;
+    }
+
+    // Update other fields
+    if (excerpt !== undefined) tutorial.excerpt = excerpt;
+    if (body !== undefined) tutorial.body = body;
+
+    // Update categories if provided (validate they exist)
+    if (categories !== undefined) {
+      // Validate all categories are valid ObjectIds
+      const validCategories = categories.filter((catId) =>
+        mongoose.Types.ObjectId.isValid(catId)
+      );
+      tutorial.categories = validCategories;
+    }
+
+    if (tags !== undefined) tutorial.tags = tags;
+    if (project !== undefined) tutorial.project = project;
+
+    // Update video data
+    if (video) {
+      tutorial.video = {
+        ...tutorial.video,
+        ...video,
+        // Ensure provider is set based on URL if not provided
+        provider:
+          video.provider ||
+          (video.url?.includes("vimeo") ? "vimeo" : "youtube"),
+      };
+    }
+
+    tutorial.updatedAt = new Date();
+    await tutorial.save();
+
+    // Populate categories for response
+    const populatedTutorial = await Content.findById(tutorial._id)
+      .populate("categories")
+      .lean();
+
+    res.json({
+      message: "Tutorial updated successfully",
+      tutorial: populatedTutorial,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/* Route DELETE /tutorial/:slug */
+
+export async function deleteTutorial(req, res, next) {
+  try {
+    const { slug } = req.params;
+    const tutorial = await Content.findOneAndDelete({ slug, type: "video" });
+    if (!tutorial) return res.status(404).json({ error: "Tutorial not found" });
+    res.json({ message: "Tutorial deleted" });
   } catch (err) {
     next(err);
   }

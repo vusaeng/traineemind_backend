@@ -44,6 +44,8 @@ router.post(
   ]),
   TutorialController.createTutorial
 );
+router.patch("/tutorials/:slug", TutorialController.updateTutorial);
+router.delete("/tutorials/slug", TutorialController.deleteTutorial);
 router.patch("/content/:id", ContentController.update);
 router.delete("/content/:id", ContentController.remove);
 router.patch("/content/:id/publish", ContentController.publishToggle);

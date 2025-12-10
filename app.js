@@ -20,7 +20,7 @@ app.use(express.json());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/admin", tutorialRoutes);
+//app.use("/admin", tutorialRoutes);
 app.use("/api/content", contentRoutes);
 app.use("/api", analyticsPublicRoutes); // <-- public summary
 
