@@ -183,27 +183,24 @@ export async function list(req, res, next) {
 export async function updateTutorial(req, res, next) {
   try {
     const { slug } = req.params;
-
-    // Filter by both slug and type: "video" to ensure we're getting a tutorial
     const tutorial = await Content.findOne({ slug, type: "video" });
-
-    // In your controller, add more debugging:
-    console.log("Looking for slug:", slug);
 
     if (!tutorial) {
       return res.status(404).json({ error: "Tutorial not found" });
     }
 
     const { title, excerpt, body, categories, tags, project, video } = req.body;
+    const originalSlug = tutorial.slug;
+    let newSlug = originalSlug;
 
     // Update title and slug if title changed
     if (title && title !== tutorial.title) {
-      const newSlug = slugify(title);
+      newSlug = slugify(title);
 
       // Check if new slug already exists for videos
       const slugExists = await Content.findOne({
         slug: newSlug,
-        type: "video", // Also check type here
+        type: "video",
         _id: { $ne: tutorial._id },
       });
 
@@ -221,9 +218,8 @@ export async function updateTutorial(req, res, next) {
     if (excerpt !== undefined) tutorial.excerpt = excerpt;
     if (body !== undefined) tutorial.body = body;
 
-    // Update categories if provided (validate they exist)
+    // Update categories if provided
     if (categories !== undefined) {
-      // Validate all categories are valid ObjectIds
       const validCategories = categories.filter((catId) =>
         mongoose.Types.ObjectId.isValid(catId)
       );
@@ -238,7 +234,6 @@ export async function updateTutorial(req, res, next) {
       tutorial.video = {
         ...tutorial.video,
         ...video,
-        // Ensure provider is set based on URL if not provided
         provider:
           video.provider ||
           (video.url?.includes("vimeo") ? "vimeo" : "youtube"),
@@ -253,9 +248,12 @@ export async function updateTutorial(req, res, next) {
       .populate("categories")
       .lean();
 
+    // Include original slug in response for frontend reference
     res.json({
       message: "Tutorial updated successfully",
       tutorial: populatedTutorial,
+      originalSlug, // Send original slug for comparison
+      slugChanged: originalSlug !== newSlug,
     });
   } catch (err) {
     next(err);
