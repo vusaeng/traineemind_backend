@@ -1,6 +1,7 @@
 import { slugify } from "../utils/slugify.js";
 import Content from "../models/Content.js";
 import Category from "../models/Category.js";
+import mongoose from "mongoose";
 
 export async function createTutorial(req, res, next) {
   try {
@@ -57,7 +58,7 @@ export async function createTutorial(req, res, next) {
   }
 }
 
-export async function detail(req, res, next) {
+/* export async function detail(req, res, next) {
   try {
     const tutorial = await Content.findOne({
       slug: req.params.slug,
@@ -72,7 +73,42 @@ export async function detail(req, res, next) {
   } catch (err) {
     next(err);
   }
-}
+} */
+
+
+  // Quick fix for the cast error
+export async function detail(req, res, next) {
+  try {
+    const { slug } = req.params;
+    
+    // First, just get the tutorial without populate
+    const tutorial = await Content.findOne({ slug }).lean();
+    
+    if (!tutorial) {
+      return res.status(404).json({ message: 'Tutorial not found' });
+    }
+    
+    // If categories exist and are ObjectIds, populate them
+    if (tutorial.categories && tutorial.categories.length > 0) {
+      // Check if first category is an ObjectId
+      const isObjectId = mongoose.Types.ObjectId.isValid(tutorial.categories[0]);
+      
+      if (isObjectId) {
+        const populatedTutorial = await Content.findOne({ slug })
+          .populate('categories')
+          .populate('video')
+          .lean();
+        return res.json({ tutorial: populatedTutorial });
+      }
+    }
+    
+    // Otherwise just return the tutorial as-is
+    res.json({ tutorial });
+  } catch (error) {
+    console.error('Error fetching tutorial:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
 
 export async function list(req, res, next) {
   const buildPagination = (page = 1, limit = 10) => {

@@ -9,7 +9,7 @@ const slugify = (s) =>
 
 export async function create(req, res, next) {
   try {
-    const { type, title, excerpt, body, categories, tags, video, project } =
+    const { type, title, excerpt, body, categories, tags, video, project, transcript } =
       req.body;
     const slug = slugify(title);
 
@@ -22,7 +22,8 @@ export async function create(req, res, next) {
       slug,
       excerpt,
       body,
-      author: req.user.id,
+      transcript,
+      author: req.user.name,
       categories,
       tags,
       video,
