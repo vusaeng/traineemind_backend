@@ -8,6 +8,7 @@ import * as CategoriesController from "../controllers/categories.controller.js";
 import * as UsersController from "../controllers/admin.controller.js";
 import * as AnalyticsController from "../controllers/analytics.controller.js";
 import * as TutorialController from "../controllers/tutorial.controller.js";
+import * as BlogController from "../controllers/blog.controller.js";
 
 const router = Router();
 
@@ -33,8 +34,10 @@ router.post("/upload/image", upload.single("image"), (req, res) => {
 // Content
 router.get("/content", ContentController.list);
 router.get("/tutorials", TutorialController.list);
+router.get("/blogs", BlogController.list);
 router.get("/content/:idOrSlug", ContentController.detail);
 router.get("/tutorials/:slug", TutorialController.detail);
+router.get("/blogs/:slug", BlogController.detail);
 router.post("/content", ContentController.create);
 router.post(
   "/tutorials",
@@ -44,7 +47,9 @@ router.post(
   ]),
   TutorialController.createTutorial
 );
+router.post("/blogs", BlogController.createBlog);
 router.patch("/tutorials/:slug", TutorialController.updateTutorial);
+router.patch("/blogs/:slug", BlogController.updateBlog);
 router.delete("/tutorials/:slug", TutorialController.deleteTutorial);
 router.patch("/content/:id", ContentController.update);
 router.delete("/content/:id", ContentController.remove);
