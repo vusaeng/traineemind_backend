@@ -11,7 +11,7 @@ const contentSchema = new mongoose.Schema(
     slug: { type: String, required: true, unique: true },
     body: { type: String },
     transcript: { type: String },
-    author: { type: mongoose.Schema.Types.ObjectId, ref: "Admin" },
+    author: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     excerpt: { type: String },
     tags: [String],
     categories: [{ type: mongoose.Schema.Types.ObjectId, ref: "Category" }],
