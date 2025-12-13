@@ -27,6 +27,7 @@ export async function register(req, res, next) {
       passwordHash,
       name,
       verified: false,
+      isActive: false,
       verificationToken,
       verificationExpires: Date.now() + 24 * 60 * 60 * 1000, // 24h
     });
@@ -36,20 +37,20 @@ export async function register(req, res, next) {
     const html = `
       <h2>Welcome to TraineeMind 🎉</h2>
       <p>Hi ${name}, thanks for registering!</p>
-      <p>Please <a href="${verifyUrl}">click here</a> to verify your email address.</p>
+      <p>Please <a href="${verifyUrl}">click here</a> to verify and activate your email address.</p>
       <p>This link will expire in 24 hours.</p>
     `;
 
     await sendEmail(
       user.email,
       "Verify your email - TraineeMind",
-      `Hi ${name}, please verify your email by clicking this link: ${verifyUrl}`,
+      `Hi ${name}, please verify and activate your email by clicking this link: ${verifyUrl}`,
       html
     );
 
     res.status(201).json({
       message:
-        "Registration successful. Please check your email to verify your account.",
+        "Registration successful. Please check your email to verify and activate your account.",
     });
   } catch (err) {
     next(err);
@@ -97,6 +98,7 @@ export async function verifyEmail(req, res, next) {
 
     // Update user verification status
     user.verified = true;
+    user.isActive = true;
     user.verificationToken = null;
     user.verificationExpires = null;
 

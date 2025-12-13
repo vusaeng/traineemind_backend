@@ -61,9 +61,11 @@ router.post("/categories", CategoriesController.create);
 router.patch("/categories/:id", CategoriesController.update);
 router.delete("/categories/:id", CategoriesController.remove);
 
+router.get("/users/stats", UsersController.getUserStats);
 // Users
 router.get("/users", UsersController.list);
 router.get("/users/:id", UsersController.detail);
+router.post("/users", UsersController.create);
 router.patch("/users/:id", UsersController.update);
 router.patch("/users/:id/status", UsersController.toggleActive);
 router.patch("/users/:id/role", UsersController.toggleRole);
