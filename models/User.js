@@ -7,6 +7,9 @@ const userSchema = new mongoose.Schema(
     name: { type: String, required: true },
     role: { type: String, enum: ["admin", "user"], default: "user" },
     isActive: { type: Boolean, default: false },
+    loginCount: { type: Number, default: 0 }, // Track login count
+    lastLogin: { type: Date }, // Already exists in your model
+    lastActivity: { type: Date }, // For tracking any activity
     resetPasswordToken: { type: String },
     resetPasswordExpires: { type: Date },
     verified: { type: Boolean, default: false },

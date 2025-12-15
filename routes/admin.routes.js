@@ -61,7 +61,11 @@ router.post("/categories", CategoriesController.create);
 router.patch("/categories/:id", CategoriesController.update);
 router.delete("/categories/:id", CategoriesController.remove);
 
-router.get("/users/stats", UsersController.getUserStats);
+
+// User statistics routes
+router.get("/users/stats", UsersController.getUserStats); // Overall stats (if you still want it)
+router.get("/users/:id/stats", UsersController.getUserIndividualStats); // Individual user stats
+
 // Users
 router.get("/users", UsersController.list);
 router.get("/users/:id", UsersController.detail);

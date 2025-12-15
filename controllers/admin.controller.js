@@ -7,7 +7,7 @@ import mongoose from "mongoose";
  */
 export async function list(req, res, next) {
   try {
-    const { page = 1, limit = 10, search, role, status } = req.query;
+    const { page = 1, limit = 10, search, role, status, verified } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     let query = {};
@@ -25,6 +25,10 @@ export async function list(req, res, next) {
 
     if (status && status !== "all") {
       query.isActive = status === "active";
+    }
+
+    if (verified && verified !== "all") {
+      query.verified = verified === "active";
     }
 
     const [users, total] = await Promise.all([
@@ -60,11 +64,12 @@ export async function list(req, res, next) {
  */
 export async function update(req, res, next) {
   try {
-    const { role, isActive } = req.body;
+    const { role, isActive, verified } = req.body;
 
     const update = {};
     if (role) update.role = role;
     if (typeof isActive === "boolean") update.isActive = isActive;
+    if (typeof verified === "boolean") update.verified = verified;
 
     const user = await User.findByIdAndUpdate(req.params.id, update, {
       new: true,
@@ -250,3 +255,172 @@ export async function getUserStats(req, res, next) {
     next(err);
   }
 }
+
+
+// ✅ Get individual user statistics
+export async function getUserIndividualStats(req, res, next) {
+  try {
+    const { id } = req.params;
+    
+    console.log(`📊 Fetching statistics for user: ${id}`);
+    
+    // Validate ID
+    if (!id || id === "undefined" || id === "null") {
+      return res.status(400).json({ error: "Invalid user ID" });
+    }
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid user ID format" });
+    }
+    
+    // Check if user exists
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    // Get current date for calculations
+    const now = new Date();
+    
+    // 1. Total Content Created (Admins only, or all users if you prefer)
+    let totalContentCreated = 0;
+    let totalContentPublished = 0;
+    
+    // Check user role - adjust this logic based on your requirements
+    if (user.role === "admin") {
+      // Count all content created by this admin
+      // Adjust based on your content models
+      try {
+        // Example if you have separate models:
+        const [
+          totalTutorials,
+          publishedTutorials,
+          totalBlogs,
+          publishedBlogs,
+          totalContent,
+          publishedContent
+        ] = await Promise.all([
+          Tutorial.countDocuments({ author: id }),
+          Tutorial.countDocuments({ author: id, isPublished: true }),
+          Blog.countDocuments({ author: id }),
+          Blog.countDocuments({ author: id, isPublished: true }),
+          Content.countDocuments({ author: id }),
+          Content.countDocuments({ author: id, isPublished: true })
+        ]);
+        
+        totalContentCreated = totalTutorials + totalBlogs + totalContent;
+        totalContentPublished = publishedTutorials + publishedBlogs + publishedContent;
+        
+      } catch (contentError) {
+        console.log("⚠️ Content models might not exist, using fallback logic");
+        // Fallback if content models don't exist
+        totalContentCreated = 0;
+        totalContentPublished = 0;
+      }
+    } else {
+      // For non-admin users, you might still want to track their content
+      // Adjust based on your application logic
+      try {
+        const userContent = await Content.countDocuments({ author: id });
+        const publishedUserContent = await Content.countDocuments({ 
+          author: id, 
+          isPublished: true 
+        });
+        
+        totalContentCreated = userContent;
+        totalContentPublished = publishedUserContent;
+      } catch {
+        totalContentCreated = 0;
+        totalContentPublished = 0;
+      }
+    }
+    
+    // 2. Login Count
+    // You need to track login count in your User model
+    // Add this field to your User model if not already there:
+    // loginCount: { type: Number, default: 0 }
+    const loginCount = user.loginCount || 0;
+    
+    // 3. Days Since Last Active
+    let daysSinceLastActive = 0;
+    if (user.lastLogin) {
+      const lastLoginDate = new Date(user.lastLogin);
+      const diffTime = Math.abs(now - lastLoginDate);
+      daysSinceLastActive = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    } else if (user.lastActivity) {
+      // Alternative: Use lastActivity field if you have it
+      const lastActivityDate = new Date(user.lastActivity);
+      const diffTime = Math.abs(now - lastActivityDate);
+      daysSinceLastActive = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    } else {
+      // Fallback to account creation date
+      const createdAt = new Date(user.createdAt);
+      const diffTime = Math.abs(now - createdAt);
+      daysSinceLastActive = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    }
+    
+    // 4. Additional stats you might want
+    const accountAgeDays = Math.floor(
+      (now - new Date(user.createdAt)) / (1000 * 60 * 60 * 24)
+    );
+    
+    // Content creation rate (per month)
+    const contentPerMonth = accountAgeDays > 30 
+      ? (totalContentCreated / (accountAgeDays / 30)).toFixed(1)
+      : totalContentCreated;
+    
+    // Publication rate
+    const publicationRate = totalContentCreated > 0
+      ? ((totalContentPublished / totalContentCreated) * 100).toFixed(1)
+      : 0;
+    
+    res.json({
+      success: true,
+      stats: {
+        // Core requested stats
+        totalContentCreated,
+        totalContentPublished,
+        loginCount,
+        daysSinceLastActive,
+        
+        // Additional useful stats
+        accountAgeDays,
+        contentPerMonth,
+        publicationRate,
+        
+        // User info for context
+        userInfo: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          isActive: user.isActive,
+          verified: user.verified,
+          createdAt: user.createdAt,
+          lastLogin: user.lastLogin
+        },
+        
+        // Timestamp
+        generatedAt: now.toISOString(),
+        
+        // Quick summary
+        summary: {
+          activityLevel: daysSinceLastActive <= 1 ? "Very Active" : 
+                       daysSinceLastActive <= 7 ? "Active" :
+                       daysSinceLastActive <= 30 ? "Moderate" : "Inactive",
+          contentCreator: totalContentCreated > 10 ? "High" : 
+                         totalContentCreated > 3 ? "Medium" : 
+                         totalContentCreated > 0 ? "Low" : "None",
+          loginFrequency: loginCount > 50 ? "Very Frequent" :
+                         loginCount > 20 ? "Frequent" :
+                         loginCount > 5 ? "Occasional" : "Rare"
+        }
+      }
+    });
+    
+  } catch (err) {
+    console.error("❌ Error fetching individual user statistics:", err);
+    next(err);
+  }
+}
+

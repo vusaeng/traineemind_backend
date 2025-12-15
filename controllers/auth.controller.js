@@ -147,6 +147,8 @@ export async function login(req, res, next) {
     // 1. Find user
     const user = await User.findOne({ email }).select("+password");
 
+
+
     if (!user) {
       console.log("❌ User not found");
       return res.status(401).json({ error: "Invalid credentials" });
@@ -171,6 +173,12 @@ export async function login(req, res, next) {
         error: "Please verify your email before logging in.",
       });
     }
+
+        // Update login stats
+    user.loginCount = (user.loginCount || 0) + 1;
+    user.lastLogin = new Date();
+    user.lastActivity = new Date();
+    await user.save();
 
     // 4 Generate JWT with sub + role
     const token = jwt.sign(
