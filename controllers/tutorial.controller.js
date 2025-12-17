@@ -189,7 +189,7 @@ export async function updateTutorial(req, res, next) {
       return res.status(404).json({ error: "Tutorial not found" });
     }
 
-    const { title, excerpt, body, categories, tags, project, video } = req.body;
+    const { title, excerpt, body, categories, tags, project, video, prerequisites, learningObjectives } = req.body;
     const originalSlug = tutorial.slug;
     let newSlug = originalSlug;
 
@@ -217,6 +217,8 @@ export async function updateTutorial(req, res, next) {
     // Update other fields
     if (excerpt !== undefined) tutorial.excerpt = excerpt;
     if (body !== undefined) tutorial.body = body;
+    if (learningObjectives !== undefined) tutorial.learningObjectives = learningObjectives;
+    if (prerequisites !== undefined) tutorial.prerequisites = prerequisites;
 
     // Update categories if provided
     if (categories !== undefined) {

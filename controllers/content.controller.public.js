@@ -36,7 +36,7 @@ export async function list(req, res, next) {
 
     const sort = { [sortBy]: order === "asc" ? 1 : -1 };
 
-    const [items, total] = await Promise.all([
+    const [blogs, total] = await Promise.all([
       Content.find(filter)
         .sort(sort)
         .skip(skip)
@@ -47,7 +47,7 @@ export async function list(req, res, next) {
     ]);
 
     res.json({
-      items,
+      blogs,
       page,
       limit,
       total,

@@ -11,6 +11,8 @@ const contentSchema = new mongoose.Schema(
     slug: { type: String, required: true, unique: true },
     body: { type: String },
     transcript: { type: String },
+    learningObjectives: [String],
+    prerequisites: [String],
     author: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     excerpt: { type: String },
     tags: [String],
@@ -25,6 +27,8 @@ const contentSchema = new mongoose.Schema(
     },
     metrics: {
       views: { type: Number, default: 0 },
+      rating: { type: Number, default: 0 },
+      ratingsCount: { type: Number, default: 0 },
     },
     isPublished: { type: Boolean, default: false },
     publishedAt: Date,

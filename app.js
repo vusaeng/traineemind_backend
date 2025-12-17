@@ -9,7 +9,6 @@ import authRoutes from "./routes/auth.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import contentRoutes from "./routes/content.routes.js";
 import analyticsPublicRoutes from "./routes/analytics.public.routes.js";
-import tutorialRoutes from "./routes/tutorial.routes.js";
 
 const app = express();
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
