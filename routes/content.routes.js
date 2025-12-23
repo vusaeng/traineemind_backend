@@ -9,4 +9,8 @@ router.get("/", ContentController.list);
 // GET /api/content/:slug → get single content by slug
 router.get("/:slug", ContentController.getBySlug);
 
+router.get("/category", ContentController.listByCategory);
+
+router.post("/:slug/view", ContentController.incrementViewCount);
+
 export default router;

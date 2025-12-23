@@ -1,5 +1,6 @@
 import Content from "../models/Content.js";
 import { buildPagination } from "../utils/pagination.js";
+import mongoose from "mongoose";
 
 const slugify = (s) =>
   s
@@ -11,15 +12,23 @@ const slugify = (s) =>
  * List published content with search, filters, and pagination
  * GET /api/content
  */
+// controllers/blogController.js - Update list function
 export async function list(req, res, next) {
+  const buildPagination = (page = 1, limit = 10) => {
+    page = parseInt(page);
+    limit = parseInt(limit);
+    const skip = (page - 1) * limit;
+    return { page, limit, skip };
+  };
+
   try {
     const {
       q,
-      type,
       categories,
       tags,
-      sortBy = "publishedAt",
+      sortBy = "createdAt",
       order = "desc",
+      isPublished,
     } = req.query;
 
     const { page, limit, skip } = buildPagination(
@@ -27,33 +36,69 @@ export async function list(req, res, next) {
       req.query.limit
     );
 
-    const filter = {};
-    if (q) filter.$text = { $search: q };
-    if (type) filter.type = type;
-    if (categories) filter.categories = { $in: categories.split(",") };
-    if (tags) filter.tags = { $in: tags.split(",") };
-    filter.isPublished = true;
+    const filter = { type: "blog" };
+
+    // Add filter for public access
+    if (req.route.path === "/blogs") {
+      // Public endpoint
+      filter.isPublished = true;
+    }
+
+    // Search query
+    if (q) {
+      filter.$or = [
+        { title: { $regex: q, $options: "i" } },
+        { excerpt: { $regex: q, $options: "i" } },
+        { body: { $regex: q, $options: "i" } },
+      ];
+    }
+
+    // Filter by categories
+    if (categories) {
+      const categoryIds = categories
+        .split(",")
+        .filter((id) => mongoose.Types.ObjectId.isValid(id));
+      if (categoryIds.length > 0) {
+        filter.categories = { $in: categoryIds };
+      }
+    }
+
+    // Filter by tags
+    if (tags) {
+      const tagArray = tags.split(",").map((tag) => tag.trim());
+      filter.tags = { $in: tagArray };
+    }
+
+    // Filter by publish status (for admin)
+    if (isPublished !== undefined && req.route.path === "/admin/blogs") {
+      filter.isPublished = isPublished === "true";
+    }
 
     const sort = { [sortBy]: order === "asc" ? 1 : -1 };
 
+    // POPULATE categories and author
     const [blogs, total] = await Promise.all([
       Content.find(filter)
+        .populate("categories", "name slug") // Only get name and slug
+        .populate("author", "name email avatar") // Get author details
         .sort(sort)
         .skip(skip)
         .limit(limit)
-        .select("-project.files") // exclude heavy project files in list
         .lean(),
       Content.countDocuments(filter),
     ]);
 
     res.json({
       blogs,
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
     });
   } catch (err) {
+    console.error("Error in blog list:", err);
     next(err);
   }
 }
@@ -64,7 +109,7 @@ export async function list(req, res, next) {
  */
 export async function getBySlug(req, res, next) {
   try {
-    const content = await Content.findOne({
+    const blog = await Content.findOne({
       slug: req.params.slug,
       isPublished: true,
     })
@@ -72,9 +117,51 @@ export async function getBySlug(req, res, next) {
       .populate("categories", "name slug")
       .lean();
 
-    if (!content) return res.status(404).json({ error: "Not found" });
+    if (!blog) return res.status(404).json({ error: "Blog not found" });
 
-    res.json({ content });
+    res.json({ blog });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// List content by category
+export async function listByCategory(req, res, next) {
+  try {
+    const { category } = req.query;
+    if (!category) {
+      return res.status(400).json({ error: "Category is required" });
+    }
+    const contents = await Content.find({
+      categories: category,
+      isPublished: true,
+    })
+      .populate("author", "name")
+      .populate("categories", "name slug")
+      .sort({ publishedAt: -1 })
+      .lean();
+    res.json({ contents });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**Increment view count for public blogs POST /content/:slug/view*/
+
+export async function incrementViewCount(req, res, next) {
+  try {
+    const { slug } = req.params;
+    const blog = await Content.findOne({
+      slug,
+      isPublished: true,
+      type: "blog",
+    });
+    if (!blog) {
+      return res.status(404).json({ error: "Not found" });
+    }
+    blog.metrics.views = (blog.metrics.views || 0) + 1;
+    await blog.save();
+    res.json({ viewCount: blog.metrics.views });
   } catch (err) {
     next(err);
   }

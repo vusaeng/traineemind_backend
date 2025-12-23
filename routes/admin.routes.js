@@ -61,7 +61,6 @@ router.post("/categories", CategoriesController.create);
 router.patch("/categories/:id", CategoriesController.update);
 router.delete("/categories/:id", CategoriesController.remove);
 
-
 // User statistics routes
 router.get("/users/stats", UsersController.getUserStats); // Overall stats (if you still want it)
 router.get("/users/:id/stats", UsersController.getUserIndividualStats); // Individual user stats
@@ -71,6 +70,9 @@ router.get("/users", UsersController.list);
 router.get("/users/:id", UsersController.detail);
 router.post("/users", UsersController.create);
 router.patch("/users/:id", UsersController.update);
+router.post("/users/:id/reset-password", UsersController.adminResetPassword);
+router.post("/users/:id/send-reset-link", UsersController.adminSendResetLink);
+router.get("/users/:id/reset-link-status", UsersController.getResetLinkStatus);
 router.patch("/users/:id/status", UsersController.toggleActive);
 router.patch("/users/:id/role", UsersController.toggleRole);
 router.delete("/users/:id", UsersController.remove);

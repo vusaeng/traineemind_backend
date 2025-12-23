@@ -81,3 +81,129 @@ export function welcomeTemplate(name) {
     </html>
   `;
 }
+
+// utils/emailTemplates.js
+
+export const passwordResetEmailTemplate = (email, newPassword) => `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #4f46e5; color: white; padding: 20px; text-align: center; }
+        .content { background: #f9fafb; padding: 30px; border-radius: 8px; margin: 20px 0; }
+        .password-box { 
+            background: #fff; 
+            border: 2px dashed #4f46e5; 
+            padding: 15px; 
+            text-align: center; 
+            font-size: 20px; 
+            font-weight: bold; 
+            margin: 20px 0;
+            font-family: monospace;
+        }
+        .warning { color: #dc2626; background: #fee2e2; padding: 10px; border-radius: 4px; margin: 15px 0; }
+        .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Password Reset Request</h1>
+        </div>
+        
+        <div class="content">
+            <p>Hello,</p>
+            
+            <p>Your password has been reset by an administrator. Here is your new temporary password:</p>
+            
+            <div class="password-box">
+                ${newPassword}
+            </div>
+            
+            <div class="warning">
+                ⚠️ <strong>Important:</strong> Please change this password immediately after logging in.
+            </div>
+            
+            <p>To log in:</p>
+            <ol>
+                <li>Go to ${process.env.FRONTEND_URL}/login</li>
+                <li>Enter your email: <strong>${email}</strong></li>
+                <li>Use the temporary password above</li>
+                <li>You will be prompted to set a new password</li>
+            </ol>
+            
+            <p>If you didn't request this password reset, please contact our support team immediately.</p>
+            
+            <p>Best regards,<br>The Admin Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>This is an automated message. Please do not reply to this email.</p>
+            <p>© ${new Date().getFullYear()} Your Company. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+`;
+
+export const passwordResetLinkEmailTemplate = (email, resetUrl) => `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #4f46e5; color: white; padding: 20px; text-align: center; }
+        .content { background: #f9fafb; padding: 30px; border-radius: 8px; margin: 20px 0; }
+        .button { 
+            display: inline-block; 
+            background: #4f46e5; 
+            color: white; 
+            padding: 12px 30px; 
+            text-decoration: none; 
+            border-radius: 5px; 
+            font-weight: bold; 
+            margin: 20px 0;
+        }
+        .warning { color: #dc2626; background: #fee2e2; padding: 10px; border-radius: 4px; margin: 15px 0; }
+        .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }
+        .link { word-break: break-all; color: #2563eb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Password Reset Request</h1>
+        </div>
+        
+        <div class="content">
+            <p>Hello,</p>
+            
+            <p>An administrator has requested a password reset for your account. Click the button below to set a new password:</p>
+            
+            <div style="text-align: center;">
+                <a href="${resetUrl}" class="button">Reset Your Password</a>
+            </div>
+            
+            <p>Or copy and paste this link in your browser:</p>
+            <p class="link">${resetUrl}</p>
+            
+            <div class="warning">
+                ⚠️ <strong>Important:</strong> This link will expire in 1 hour. If you don't reset your password within this time, you'll need to request a new reset link.
+            </div>
+            
+            <p>If you didn't request this password reset, please ignore this email or contact our support team.</p>
+            
+            <p>Best regards,<br>The Admin Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>This is an automated message. Please do not reply to this email.</p>
+            <p>© ${new Date().getFullYear()} Your Company. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+`;

@@ -9,8 +9,17 @@ const slugify = (s) =>
 
 export async function create(req, res, next) {
   try {
-    const { type, title, excerpt, body, categories, tags, video, project, transcript } =
-      req.body;
+    const {
+      type,
+      title,
+      excerpt,
+      body,
+      categories,
+      tags,
+      video,
+      project,
+      transcript,
+    } = req.body;
     const slug = slugify(title);
 
     const exists = await Content.findOne({ slug });

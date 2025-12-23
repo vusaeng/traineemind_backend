@@ -147,8 +147,6 @@ export async function login(req, res, next) {
     // 1. Find user
     const user = await User.findOne({ email }).select("+password");
 
-
-
     if (!user) {
       console.log("❌ User not found");
       return res.status(401).json({ error: "Invalid credentials" });
@@ -174,7 +172,7 @@ export async function login(req, res, next) {
       });
     }
 
-        // Update login stats
+    // Update login stats
     user.loginCount = (user.loginCount || 0) + 1;
     user.lastLogin = new Date();
     user.lastActivity = new Date();
@@ -287,3 +285,40 @@ export async function resetPassword(req, res, next) {
     next(err);
   }
 }
+
+// Add to auth.controller.js for debugging
+export const debugLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email }).select("+password"); // Include password field
+    if (!user) {
+      return res.json({ error: "User not found", email });
+    }
+
+    // Log password info (for debugging only - remove in production)
+    console.log("Debug Login:", {
+      email,
+      providedPassword: password,
+      storedPassword: user.password,
+      passwordStartsWith: user.password.substring(0, 20),
+      passwordLength: user.password.length,
+      isBcryptHash: user.password.startsWith("$2b$"),
+    });
+
+    // Try direct bcrypt compare
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    res.json({
+      userFound: true,
+      userId: user._id,
+      email: user.email,
+      passwordMatch: isMatch,
+      passwordHashPreview: user.password.substring(0, 30),
+      hashAlgorithm: user.password.substring(0, 4), // Should be "$2b$" for bcrypt
+    });
+  } catch (error) {
+    console.error("Debug login error:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
