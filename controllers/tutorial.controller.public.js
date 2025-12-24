@@ -10,9 +10,9 @@ const slugify = (s) =>
 
 /**
  * List published content with search, filters, and pagination
- * GET /api/content
+ * GET /api/tutorials
  */
-// controllers/blogController.js - Update list function
+// controllers/tutorialController.js - Update list function
 export async function list(req, res, next) {
   const buildPagination = (page = 1, limit = 10) => {
     page = parseInt(page);
@@ -38,11 +38,11 @@ export async function list(req, res, next) {
     );
 
     const filter = {
-      type: "blog",
+      type: "video",
     };
 
     // Add filter for public access
-    if (req.route.path === "/blogs" || req.route.path === "/tutorials") {
+    if (req.route.path === "/tutorials") {
       // Public endpoint
       filter.isPublished = true;
     }
@@ -73,14 +73,14 @@ export async function list(req, res, next) {
     }
 
     // Filter by publish status (for admin)
-    if (isPublished !== undefined && req.route.path === "/admin/blogs") {
+    if (isPublished !== undefined && req.route.path === "/admin/tutorials") {
       filter.isPublished = isPublished === "true";
     }
 
     const sort = { [sortBy]: order === "asc" ? 1 : -1 };
 
     // POPULATE categories and author
-    const [blogs, total] = await Promise.all([
+    const [tutorials, total] = await Promise.all([
       Content.find(filter)
         .populate("categories", "name slug") // Only get name and slug
         .populate("author", "name email avatar") // Get author details
@@ -93,7 +93,7 @@ export async function list(req, res, next) {
     ]);
 
     res.json({
-      blogs,
+      tutorials,
       pagination: {
         page,
         limit,
@@ -109,11 +109,11 @@ export async function list(req, res, next) {
 
 /**
  * Get a single published content item by slug
- * GET /api/content/:slug
+ * GET /api/tutorials/:slug
  */
-export async function getBySlug(req, res, next) {
+export async function detail(req, res, next) {
   try {
-    const blog = await Content.findOne({
+    const tutorial = await Content.findOne({
       slug: req.params.slug,
       isPublished: true,
     })
@@ -121,9 +121,9 @@ export async function getBySlug(req, res, next) {
       .populate("categories", "name slug")
       .lean();
 
-    if (!blog) return res.status(404).json({ error: "Blog not found" });
+    if (!tutorial) return res.status(404).json({ error: "Tutorial not found" });
 
-    res.json({ blog });
+    res.json({ tutorial });
   } catch (err) {
     next(err);
   }
@@ -150,22 +150,22 @@ export async function listByCategory(req, res, next) {
   }
 }
 
-/**Increment view count for public blogs POST /content/:slug/view*/
+/**Increment view count for public blogs POST /tutorial/:slug/view*/
 
 export async function incrementViewCount(req, res, next) {
   try {
     const { slug } = req.params;
-    const blog = await Content.findOne({
+    const tutorial = await Content.findOne({
       slug,
       isPublished: true,
-      type: "blog",
+      type: "video",
     });
-    if (!blog) {
+    if (!tutorial) {
       return res.status(404).json({ error: "Not found" });
     }
-    blog.metrics.views = (blog.metrics.views || 0) + 1;
-    await blog.save();
-    res.json({ viewCount: blog.metrics.views });
+    tutorial.metrics.views = (tutorial.metrics.views || 0) + 1;
+    await tutorial.save();
+    res.json({ viewCount: tutorial.metrics.views });
   } catch (err) {
     next(err);
   }

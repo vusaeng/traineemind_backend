@@ -11,12 +11,17 @@ const contentSchema = new mongoose.Schema(
     slug: { type: String, required: true, unique: true },
     body: { type: String },
     transcript: { type: String },
+    image: {
+      url: String,
+      altText: String,
+    },
     learningObjectives: [String],
     prerequisites: [String],
     author: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     excerpt: { type: String },
     tags: [String],
     categories: [{ type: mongoose.Schema.Types.ObjectId, ref: "Category" }],
+    isFeatured: { type: Boolean, default: false },
     video: {
       url: String,
       durationSec: Number,

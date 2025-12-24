@@ -130,6 +130,7 @@ export async function detail(req, res, next) {
   }
 }
 
+/* Route GET /tutorials */
 export async function list(req, res, next) {
   const buildPagination = (page = 1, limit = 10) => {
     page = parseInt(page);
@@ -146,18 +147,40 @@ export async function list(req, res, next) {
       sortBy = "createdAt",
       order = "desc",
     } = req.query;
+
     const { page, limit, skip } = buildPagination(
       req.query.page,
       req.query.limit
     );
+
     const filter = { type: "video" };
+
+    // Search query
     if (q) filter.$text = { $search: q };
-    if (categories) filter.categories = { $in: categories.split(",") };
-    if (tags) filter.tags = { $in: tags.split(",") };
+
+    // Filter by categories
+    if (categories) {
+      const categoryIds = categories
+        .split(",")
+        .filter((id) => mongoose.Types.ObjectId.isValid(id));
+      if (categoryIds.length > 0) {
+        filter.categories = { $in: categoryIds };
+      }
+    }
+
+    // Filter by tags
+    if (tags) {
+      const tagArray = tags.split(",").map((tag) => tag.trim());
+      filter.tags = { $in: tagArray };
+    }
 
     const sort = { [sortBy]: order === "asc" ? 1 : -1 };
+
     const [tutorials, total] = await Promise.all([
       Content.find(filter)
+        .populate("categories", "name slug") // Only get name and slug
+        .populate("author", "name email avatar") // Get author details
+        .populate("isFeatured") // Populate isFeatured field
         .sort(sort)
         .skip(skip)
         .limit(limit)
@@ -189,7 +212,18 @@ export async function updateTutorial(req, res, next) {
       return res.status(404).json({ error: "Tutorial not found" });
     }
 
-    const { title, excerpt, body, categories, tags, project, video, prerequisites, learningObjectives } = req.body;
+    const {
+      title,
+      excerpt,
+      body,
+      isPublished,
+      categories,
+      tags,
+      project,
+      video,
+      prerequisites,
+      learningObjectives,
+    } = req.body;
     const originalSlug = tutorial.slug;
     let newSlug = originalSlug;
 
@@ -217,8 +251,11 @@ export async function updateTutorial(req, res, next) {
     // Update other fields
     if (excerpt !== undefined) tutorial.excerpt = excerpt;
     if (body !== undefined) tutorial.body = body;
-    if (learningObjectives !== undefined) tutorial.learningObjectives = learningObjectives;
+    if (learningObjectives !== undefined)
+      tutorial.learningObjectives = learningObjectives;
     if (prerequisites !== undefined) tutorial.prerequisites = prerequisites;
+
+    if (isPublished !== undefined) tutorial.isPublished = isPublished;
 
     // Update categories if provided
     if (categories !== undefined) {

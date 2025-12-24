@@ -10,6 +10,7 @@ import adminRoutes from "./routes/admin.routes.js";
 import contentRoutes from "./routes/content.routes.js";
 import analyticsPublicRoutes from "./routes/analytics.public.routes.js";
 import resetPasswordRoutes from "./routes/resetPassword.routes.js";
+import tutorialRoutes from "./routes/tutorial.routes.js";
 
 const app = express();
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
@@ -20,7 +21,7 @@ app.use(express.json());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
-//app.use("/admin", tutorialRoutes);
+app.use("/api/tutorials", tutorialRoutes);
 app.use("/api/content", contentRoutes);
 app.use("/api", analyticsPublicRoutes); // <-- public summary
 app.use("/api/auth/reset-password", resetPasswordRoutes);
