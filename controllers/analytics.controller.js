@@ -28,6 +28,16 @@ export async function overview(req, res, next) {
       ]),
     ]);
 
+    // Get comment stats
+    const blogs = await Content.find({ type: "blog" });
+    let pendingComments = 0;
+    blogs.forEach((blog) => {
+      const blogComments = blog.comments || [];
+      pendingComments += blogComments.filter(
+        (c) => c.status === "pending"
+      ).length;
+    });
+
     const totals = viewsAgg[0] || { views: 0, likes: 0 };
 
     res.json({
@@ -39,6 +49,7 @@ export async function overview(req, res, next) {
         totalBlogs,
         totalViews: totals.views,
         totalLikes: totals.likes,
+        pendingComments,
       },
     });
   } catch (err) {

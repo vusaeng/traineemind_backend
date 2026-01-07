@@ -1,6 +1,8 @@
 import Content from "../models/Content.js";
 import { buildPagination } from "../utils/pagination.js";
 import mongoose from "mongoose";
+import BlogView from "../models/BlogView.js";
+import Category from "../models/Category.js";
 
 const slugify = (s) =>
   s
@@ -129,6 +131,21 @@ export async function getBySlug(req, res, next) {
   }
 }
 
+/**
+ * Public endpoint to list categories
+ */
+export async function listCategories(req, res, next) {
+  try {
+    const categories = await Category.find({}).lean();
+    if (!categories) {
+      return res.status(404).json({ error: "No categories found" });
+    }
+    res.json({ categories });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // List content by category
 export async function listByCategory(req, res, next) {
   try {
@@ -166,6 +183,194 @@ export async function incrementViewCount(req, res, next) {
     blog.metrics.views = (blog.metrics.views || 0) + 1;
     await blog.save();
     res.json({ viewCount: blog.metrics.views });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /api/content/:id/view - Increment view count and log view date with IP tracking
+// POST /api/content/:id/view - Track blog view with IP/userAgent
+export const trackBlogView = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid blog ID format",
+      });
+    }
+
+    const clientIP =
+      req.ip ||
+      req.headers["x-forwarded-for"]?.split(",")[0] ||
+      req.connection.remoteAddress ||
+      req.socket.remoteAddress ||
+      "Unknown";
+
+    const userAgent = req.get("User-Agent") || "Unknown";
+
+    // Find the blog first to check status
+    const blog = await Content.findOne({
+      _id: id,
+      type: "blog",
+      isPublished: true, // Consistent with other functions
+    });
+
+    if (!blog) {
+      return res.status(404).json({
+        success: false,
+        message: "Blog not found or not published",
+      });
+    }
+
+    // Check for duplicate views from same IP within 24 hours
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const recentViewFromIP = await BlogView.findOne({
+      blog: id,
+      ipAddress: clientIP,
+      viewedAt: { $gte: twentyFourHoursAgo },
+    });
+
+    if (recentViewFromIP) {
+      return res.json({
+        success: true,
+        message: "View already recorded for this IP address (24h cooldown)",
+        data: {
+          views: blog.metrics?.views || 0, // Consistent with your other function
+          isNewView: false,
+        },
+      });
+    }
+
+    // Create view record
+    const blogView = new BlogView({
+      blog: id,
+      ipAddress: clientIP,
+      userAgent: userAgent,
+      viewedAt: new Date(),
+    });
+
+    // Update blog view count
+    const updatedBlog = await Content.findOneAndUpdate(
+      {
+        _id: id,
+        type: "blog",
+        isPublished: true,
+      },
+      {
+        $inc: { "metrics.views": 1 },
+        $push: { viewDates: new Date() },
+      },
+      {
+        new: true,
+        upsert: false,
+      }
+    );
+
+    // Don't await - fire and forget. Make BlogView Save Non-Blocking
+    blogView.save().catch(console.error);
+
+    res.json({
+      success: true,
+      data: {
+        views: updatedBlog.metrics?.views || 0,
+        isNewView: true,
+      },
+    });
+  } catch (error) {
+    console.error("Error tracking blog view:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while tracking view",
+    });
+  }
+};
+
+export async function commentsAdd(req, res, next) {
+  try {
+    const { slug } = req.params;
+    const { name, email, content } = req.body;
+
+    if (!name || !email || !content) {
+      return res.status(400).json({
+        error: "Name, email, and content are required",
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        error: "Please enter a valid email address",
+      });
+    }
+
+    const blog = await Content.findOne({
+      slug,
+      isPublished: true,
+      type: "blog",
+    });
+
+    if (!blog) {
+      return res.status(404).json({ error: "Blog not found" });
+    }
+
+    const comment = {
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      content: content.trim(),
+      status: "pending", // Default to pending
+      createdAt: new Date(),
+    };
+
+    blog.comments = blog.comments || [];
+    blog.comments.push(comment);
+    await blog.save();
+
+    // Optional: Send notification to admin
+    // await sendCommentNotification(blog, comment);
+
+    res.status(201).json({
+      comment,
+      message:
+        "Comment submitted for moderation. It will appear after approval.",
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** get comments for public blogs GET /content/:slug/comments*/
+export async function commentsList(req, res, next) {
+  try {
+    const { slug } = req.params;
+    const { showPending } = req.query; // Optional: for admin preview
+
+    const blog = await Content.findOne({
+      slug,
+      isPublished: true,
+      type: "blog",
+    }).lean();
+
+    if (!blog) {
+      return res.status(404).json({ error: "Blog not found" });
+    }
+
+    let comments = blog.comments || [];
+
+    // For public API, only show approved comments
+    // For admin, you can add a secret parameter to see pending
+    if (showPending !== "true") {
+      comments = comments.filter((comment) => comment.status === "approved");
+    }
+
+    // Sort by newest first
+    comments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json({ comments });
   } catch (err) {
     next(err);
   }

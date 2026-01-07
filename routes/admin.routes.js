@@ -9,6 +9,7 @@ import * as UsersController from "../controllers/admin.controller.js";
 import * as AnalyticsController from "../controllers/analytics.controller.js";
 import * as TutorialController from "../controllers/tutorial.controller.js";
 import * as BlogController from "../controllers/blog.controller.js";
+import * as CommentController from "../controllers/comment.controller.js";
 
 const router = Router();
 
@@ -54,6 +55,14 @@ router.delete("/tutorials/:slug", TutorialController.deleteTutorial);
 router.patch("/content/:id", ContentController.update);
 router.delete("/content/:id", ContentController.remove);
 router.patch("/content/:id/publish", ContentController.publishToggle);
+
+// Comments
+
+router.get("/comments/stats", CommentController.getCommentStats);
+router.get("/comments", CommentController.getComments);
+router.put("/comments/:commentId/moderate", CommentController.moderateComment);
+router.post("/comments/bulk-moderate", CommentController.bulkModerateComments);
+router.delete("/comments/:commentId", CommentController.deleteComment);
 
 // Categories
 router.get("/categories", CategoriesController.list);

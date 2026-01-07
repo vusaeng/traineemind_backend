@@ -15,6 +15,8 @@ export async function createTutorial(req, res, next) {
       videoUrl,
       thumbnailUrl,
       provider,
+      durationSec, // Add this
+      estimatedTime, // Add this
     } = req.body;
 
     // Handle video URL from either req.body.videoUrl OR req.body.video.url
@@ -57,6 +59,7 @@ export async function createTutorial(req, res, next) {
       categories: categoryIds,
       tags,
       project,
+      estimatedTime: estimatedTime || Math.ceil((durationSec || 0) / 60),
       video: {
         url: videoFile
           ? `/uploads/videos/${videoFile.filename}`
@@ -65,7 +68,7 @@ export async function createTutorial(req, res, next) {
           ? `/uploads/thumbnails/${thumbnailFile.filename}`
           : finalThumbnailUrl, // Use the extracted thumbnail URL
         provider: videoFile ? "selfhosted" : finalProvider,
-        durationSec: req.body.durationSec,
+        durationSec: req.body.durationSec || durationSec || 0,
         transcript: req.body.transcript,
         quality: req.body.quality || ["720p"],
       },
@@ -216,6 +219,7 @@ export async function updateTutorial(req, res, next) {
       title,
       excerpt,
       body,
+      transcript,
       isPublished,
       categories,
       tags,
@@ -251,6 +255,7 @@ export async function updateTutorial(req, res, next) {
     // Update other fields
     if (excerpt !== undefined) tutorial.excerpt = excerpt;
     if (body !== undefined) tutorial.body = body;
+    if (transcript !== undefined) tutorial.transcript = transcript;
     if (learningObjectives !== undefined)
       tutorial.learningObjectives = learningObjectives;
     if (prerequisites !== undefined) tutorial.prerequisites = prerequisites;

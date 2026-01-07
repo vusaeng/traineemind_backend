@@ -22,12 +22,57 @@ const contentSchema = new mongoose.Schema(
     tags: [String],
     categories: [{ type: mongoose.Schema.Types.ObjectId, ref: "Category" }],
     isFeatured: { type: Boolean, default: false },
+    comments: [
+      {
+        name: String,
+        email: String,
+        content: String,
+        status: {
+          type: String,
+          enum: ["pending", "approved", "rejected"],
+          default: "pending",
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+        updatedAt: Date,
+        moderatedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        moderationNotes: String,
+        context: {
+          type: {
+            type: String,
+            enum: ["general", "question", "code_help", "feedback"],
+            default: "general",
+          },
+        },
+        timestamp: Number, // For video tutorials - timestamp in seconds
+        replies: [
+          {
+            name: String,
+            email: String,
+            content: String,
+            createdAt: {
+              type: Date,
+              default: Date.now,
+            },
+          },
+        ],
+      },
+    ],
     video: {
       url: String,
       durationSec: Number,
       thumbnailUrl: String,
       transcript: String,
-      provider: { type: String, enum: ["youtube", "vimeo", "selfhosted"] },
+      provider: {
+        type: String,
+        enum: ["youtube", "vimeo", "selfhosted", "external"],
+        default: "youtube",
+      },
       quality: [String], // e.g. ["720p", "1080p"]
     },
     metrics: {
