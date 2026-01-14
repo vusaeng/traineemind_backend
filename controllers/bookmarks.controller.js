@@ -1,7 +1,7 @@
 // src/controllers/bookmarks.controller.js
-const Bookmark = require('../models/Bookmark');
+import Bookmark from '../models/Bookmark.js';
 
-exports.list = async (req, res, next) => {
+export const list = async (req, res, next) => {
   try {
     const bookmarks = await Bookmark.find({ user: req.user.id }).populate('content', 'title slug type').lean();
     res.json({ bookmarks });
@@ -10,7 +10,7 @@ exports.list = async (req, res, next) => {
   }
 };
 
-exports.add = async (req, res, next) => {
+export const add = async (req, res, next) => {
   try {
     const bm = await Bookmark.create({ user: req.user.id, content: req.body.contentId });
     res.status(201).json({ bookmark: bm });
@@ -20,7 +20,7 @@ exports.add = async (req, res, next) => {
   }
 };
 
-exports.remove = async (req, res, next) => {
+export const remove = async (req, res, next) => {
   try {
     await Bookmark.findOneAndDelete({ user: req.user.id, content: req.params.contentId });
     res.status(204).send();

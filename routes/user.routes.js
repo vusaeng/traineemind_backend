@@ -1,12 +1,20 @@
 // src/routes/user.routes.js
-const router = require('express').Router();
-const auth = require('../middleware/auth');
-const roles = require('../middleware/roles');
-const BookmarksController = require('../controllers/bookmarks.controller');
-const ProgressController = require('../controllers/progress.controller');
-const { body, param, validationHandler } = require('../middleware/validate');
 
-router.use(auth, roles('user', 'admin'));
+import { Router } from 'express';
+import * as UserController from '../controllers/user.controller.js';
+import auth from '../middleware/auth.js';
+import roles from '../middleware/roles.js';
+import * as BookmarksController from '../controllers/bookmarks.controller.js';
+import * as ProgressController from '../controllers/progress.controller.js';
+import { body, param, validationHandler } from '../middleware/validate.js';
+const router = Router();
+
+router.use(auth, roles('user'));
+
+// Profile
+
+const { getProfile } = UserController;
+router.get('/users/profile', auth, getProfile);
 
 // Bookmarks
 router.get('/bookmarks', BookmarksController.list);
