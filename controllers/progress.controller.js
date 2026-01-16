@@ -1,4 +1,4 @@
-import Progress from "../models/Progress.js";
+import UserProgress from "../models/UserProgress.js";
 
 /**
  * List all progress records for the current user
@@ -6,7 +6,7 @@ import Progress from "../models/Progress.js";
  */
 export async function list(req, res, next) {
   try {
-    const progress = await Progress.find({ user: req.user.id })
+    const progress = await UserProgress.find({ user: req.user.id })
       .populate("content", "title slug type")
       .lean();
 
@@ -24,7 +24,7 @@ export async function upsert(req, res, next) {
   try {
     const { contentId, status, lastPositionSec, checkpoints } = req.body;
 
-    const doc = await Progress.findOneAndUpdate(
+    const doc = await UserProgress.findOneAndUpdate(
       { user: req.user.id, content: contentId },
       { status, lastPositionSec, checkpoints },
       { upsert: true, new: true, setDefaultsOnInsert: true }

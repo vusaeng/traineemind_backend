@@ -6,6 +6,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 
 import authRoutes from "./routes/auth.routes.js";
+import userRoutes from "./routes/user.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import contentRoutes from "./routes/content.routes.js";
 import analyticsPublicRoutes from "./routes/analytics.public.routes.js";
@@ -20,6 +21,7 @@ app.use(morgan("dev"));
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/tutorials", tutorialRoutes);
 app.use("/api/content", contentRoutes);

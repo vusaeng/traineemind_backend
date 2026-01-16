@@ -6,15 +6,17 @@ import auth from '../middleware/auth.js';
 import roles from '../middleware/roles.js';
 import * as BookmarksController from '../controllers/bookmarks.controller.js';
 import * as ProgressController from '../controllers/progress.controller.js';
-import { body, param, validationHandler } from '../middleware/validate.js';
+import { validationHandler } from '../middleware/validate.js';
+import { body, param } from 'express-validator';
+
 const router = Router();
 
-router.use(auth, roles('user'));
+//router.use(auth, roles('user'));
 
 // Profile
 
 const { getProfile } = UserController;
-router.get('/users/profile', auth, getProfile);
+router.get('/profile', getProfile);
 
 // Bookmarks
 router.get('/bookmarks', BookmarksController.list);
@@ -32,4 +34,4 @@ router.post(
   ProgressController.upsert
 );
 
-module.exports = router;
+export default router;
