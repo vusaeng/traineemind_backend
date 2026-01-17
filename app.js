@@ -23,7 +23,7 @@ app.use(cors());
 app.use(morgan("dev"));
 app.use(express.json());
 
-app.use("api/categories", categoriesRoutes);
+app.use("/api/categories", categoriesRoutes);
 app.use("/api", analyticsPublicRoutes); // <-- public summary
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);

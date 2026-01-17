@@ -1,7 +1,10 @@
 import Category from "../models/Category.js";
 
 const slugify = (s) =>
-  s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 
 export async function create(req, res, next) {
   try {
@@ -9,7 +12,8 @@ export async function create(req, res, next) {
     const slug = slugify(name);
 
     const exists = await Category.findOne({ slug });
-    if (exists) return res.status(409).json({ error: "Category already exists" });
+    if (exists)
+      return res.status(409).json({ error: "Category already exists" });
 
     const category = await Category.create({ name, slug, description, parent });
     res.status(201).json({ category });
@@ -28,7 +32,9 @@ export async function update(req, res, next) {
       update.slug = slugify(name);
     }
 
-    const category = await Category.findByIdAndUpdate(req.params.id, update, { new: true });
+    const category = await Category.findByIdAndUpdate(req.params.id, update, {
+      new: true,
+    });
     if (!category) return res.status(404).json({ error: "Not found" });
 
     res.json({ category });
@@ -49,12 +55,29 @@ export async function remove(req, res, next) {
 }
 
 /**
- * Optional: Public endpoint to list categories
+ *Public endpoint to list categories
  */
+
 export async function list(req, res, next) {
   try {
-    const categories = await Category.find({}).lean();
-    res.json({ categories });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const [categories, total] = await Promise.all([
+      Category.find({}).skip(skip).limit(limit).lean(),
+      Category.countDocuments(),
+    ]);
+
+    res.json({
+      categories,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    });
   } catch (err) {
     next(err);
   }
