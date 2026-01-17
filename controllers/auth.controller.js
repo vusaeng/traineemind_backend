@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import User from "../models/User.js";
+import Profile from "../models/Profile.js";
 import { signAccessToken } from "../utils/jwt.js";
 import sendEmail from "../utils/sendEmail.js"; // utility for sending emails
 import {
@@ -26,10 +27,17 @@ export async function register(req, res, next) {
       email,
       passwordHash,
       name,
+      role: "user",
       verified: false,
       isActive: false,
       verificationToken,
       verificationExpires: Date.now() + 24 * 60 * 60 * 1000, // 24h
+    });
+
+    // Create profile for user
+    await Profile.create({
+      user: user._id,
+      // Default preferences will be set by schema
     });
 
     // Send verification email
@@ -45,7 +53,7 @@ export async function register(req, res, next) {
       user.email,
       "Verify your email - TraineeMind",
       `Hi ${name}, please verify and activate your email by clicking this link: ${verifyUrl}`,
-      html
+      html,
     );
 
     res.status(201).json({
@@ -144,7 +152,7 @@ export async function login(req, res, next) {
 
     console.log(`🔑 Login attempt for: ${email}`);
 
-    // 1. Find user
+    // 1. Find user by email
     const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
@@ -158,7 +166,15 @@ export async function login(req, res, next) {
 
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
-    // 3. Check verification status
+    // 3. Check if user is active
+
+    if (!user.isActive) {
+      return res.status(403).json({
+        error: "Account is deactivated",
+      });
+    }
+
+    // 4. Check verification status
     console.log(`📋 Verification status for ${email}:`, {
       verified: user.verified,
       hasToken: !!user.verificationToken,
@@ -178,30 +194,51 @@ export async function login(req, res, next) {
     user.lastActivity = new Date();
     await user.save();
 
-    // 4 Generate JWT with sub + role
+    // 5 Generate JWT with sub + role
     const token = jwt.sign(
       {
         sub: user._id.toString(), // subject claim = user ID
         role: user.role, // role claim = "admin" or "user"
       },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "7d" },
     );
 
     // Update last login
     user.lastLogin = new Date();
     await user.save();
 
+    // 6 Get user profile
+    const profile = await Profile.findOne({ user: user._id })
+      .select("avatar bio stats")
+      .lean();
+
     console.log(`✅ Login successful for: ${email}`);
 
+    // Return response
     res.json({
+      sucess: true,
       token,
       user: {
-        id: user._id,
-        email: user.email,
+        _id: user._id,
         name: user.name,
-        verified: user.verified, // Send this to frontend
+        email: user.email,
         role: user.role,
+        isActive: user.isActive,
+        verified: user.verified,
+        createdAt: user.createdAt,
+        avatar: profile?.avatar || "",
+        bio: profile?.bio || "",
+      },
+      profile: profile || {
+        stats: {
+          totalLearningTime: 0,
+          tutorialsCompleted: 0,
+          tutorialsInProgress: 0,
+          streak: { current: 0, longest: 0 },
+          points: 0,
+          level: 1,
+        },
       },
     });
   } catch (err) {
@@ -246,7 +283,7 @@ export async function forgotPassword(req, res, next) {
       user.email,
       "Password Reset Request",
       `Click here to reset your password: ${resetUrl}`,
-      html
+      html,
     );
 
     res.json({ message: "Reset link sent to your email." });

@@ -10,6 +10,9 @@ import * as AnalyticsController from "../controllers/analytics.controller.js";
 import * as TutorialController from "../controllers/tutorial.controller.js";
 import * as BlogController from "../controllers/blog.controller.js";
 import * as CommentController from "../controllers/comment.controller.js";
+import * as AchievementController from "../controllers/achievement.controller.js";
+import { body, param } from "express-validator";
+import { validationHandler } from "../middleware/validate.js";
 
 const router = Router();
 
@@ -46,7 +49,7 @@ router.post(
     { name: "video", maxCount: 1 },
     { name: "thumbnail", maxCount: 1 },
   ]),
-  TutorialController.createTutorial
+  TutorialController.createTutorial,
 );
 router.post("/blogs", BlogController.createBlog);
 router.patch("/tutorials/:slug", TutorialController.updateTutorial);
@@ -85,6 +88,121 @@ router.get("/users/:id/reset-link-status", UsersController.getResetLinkStatus);
 router.patch("/users/:id/status", UsersController.toggleActive);
 router.patch("/users/:id/role", UsersController.toggleRole);
 router.delete("/users/:id", UsersController.remove);
+
+// Achievements
+
+// Create achievement
+router.post(
+  "/",
+  [
+    body("name")
+      .trim()
+      .notEmpty()
+      .withMessage("Name is required")
+      .isLength({ min: 3, max: 100 })
+      .withMessage("Name must be 3-100 characters"),
+    body("description")
+      .trim()
+      .notEmpty()
+      .withMessage("Description is required")
+      .isLength({ min: 10, max: 500 })
+      .withMessage("Description must be 10-500 characters"),
+    body("type")
+      .isIn([
+        "progress",
+        "streak",
+        "completion",
+        "speed",
+        "explorer",
+        "social",
+        "milestone",
+        "special",
+      ])
+      .withMessage("Invalid achievement type"),
+    body("category")
+      .isIn(["learning", "engagement", "mastery", "community", "special"])
+      .withMessage("Invalid category"),
+    body("requirement.metric")
+      .notEmpty()
+      .withMessage("Requirement metric is required")
+      .isIn([
+        "tutorials_completed",
+        "total_learning_time",
+        "streak_days",
+        "points_earned",
+        "categories_explored",
+        "comments_posted",
+        "tutorials_bookmarked",
+        "perfect_scores",
+        "certificates_earned",
+      ])
+      .withMessage("Invalid requirement metric"),
+    body("requirement.threshold")
+      .isInt({ min: 1 })
+      .withMessage("Threshold must be at least 1"),
+    body("points")
+      .optional()
+      .isInt({ min: 0 })
+      .withMessage("Points must be a positive number"),
+    body("xpReward")
+      .optional()
+      .isInt({ min: 0 })
+      .withMessage("XP reward must be a positive number"),
+    body("badgeLevel")
+      .optional()
+      .isIn(["bronze", "silver", "gold", "platinum", "diamond"])
+      .withMessage("Invalid badge level"),
+    validationHandler,
+  ],
+  AchievementController.createAchievement,
+);
+
+// Update achievement
+router.put(
+  "/:id",
+  [
+    param("id").isMongoId().withMessage("Invalid achievement ID"),
+    body("name")
+      .optional()
+      .trim()
+      .isLength({ min: 3, max: 100 })
+      .withMessage("Name must be 3-100 characters"),
+    body("description")
+      .optional()
+      .trim()
+      .isLength({ min: 10, max: 500 })
+      .withMessage("Description must be 10-500 characters"),
+    body("type")
+      .optional()
+      .isIn([
+        "progress",
+        "streak",
+        "completion",
+        "speed",
+        "explorer",
+        "social",
+        "milestone",
+        "special",
+      ])
+      .withMessage("Invalid achievement type"),
+    body("isActive")
+      .optional()
+      .isBoolean()
+      .withMessage("isActive must be a boolean"),
+    validationHandler,
+  ],
+  AchievementController.updateAchievement,
+);
+
+// Delete achievement
+router.delete(
+  "/:id",
+  [
+    param("id").isMongoId().withMessage("Invalid achievement ID"),
+    validationHandler,
+  ],
+  AchievementController.deleteAchievement,
+);
 
 // Analytics
 router.get("/analytics/overview", AnalyticsController.overview);
