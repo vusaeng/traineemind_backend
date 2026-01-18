@@ -15,6 +15,7 @@ import contentRoutes from "./routes/content.routes.js";
 import analyticsPublicRoutes from "./routes/analytics.public.routes.js";
 import resetPasswordRoutes from "./routes/resetPassword.routes.js";
 import tutorialRoutes from "./routes/tutorial.routes.js";
+import progressRoutes from "./routes/progress.routes.js";
 
 const app = express();
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
@@ -29,6 +30,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/progress", progressRoutes);
 app.use("/api/achievements", achievementRoutes);
 app.use("/api/tutorials", tutorialRoutes);
 app.use("/api/content", contentRoutes);
