@@ -552,7 +552,7 @@ export const updateUserStats = async (userId) => {
  */
 export const getUserStats = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.user._id;
 
     const profile = await Profile.findOne({ user: userId })
       .select("stats avatar bio")

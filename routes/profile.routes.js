@@ -165,17 +165,7 @@ router.put(
   ProfileController.updateLearningPreferences,
 );
 
-// ========== PUBLIC PROFILE ROUTES ==========
-// These don't require authentication
-
 // Get public user stats
-router.get(
-  "/:userId/stats",
-  [
-    param("userId").isMongoId().withMessage("Invalid user ID"),
-    validationHandler,
-  ],
-  ProfileController.getUserStats,
-);
+router.get("/stats", ProfileController.getUserStats);
 
 export default router;
