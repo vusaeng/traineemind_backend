@@ -11,13 +11,10 @@ router.get("/", ContentController.list);
 router.get("/:slug", ContentController.getBySlug);
 
 router.get("/categories", ContentController.listCategories);
+
 router.get("/category", ContentController.listByCategory);
 
-// router.post("/:slug/view", ContentController.incrementViewCount);
-
 router.post("/:id/view", ContentController.trackBlogView);
-
-// router.post("/:slug/comments", ContentController.commentsAdd);
 
 router.get("/:slug/comments", ContentController.commentsList);
 

@@ -165,7 +165,7 @@ router.put(
   ProfileController.updateLearningPreferences,
 );
 
-// Get public user stats
+// Get user stats
 router.get("/stats", ProfileController.getUserStats);
 
 export default router;
