@@ -2,6 +2,7 @@
 import User from "../models/User.js";
 import Profile from "../models/Profile.js";
 import Content from "../models/Content.js";
+import Bookmark from "../models/Bookmark.js";
 import mongoose from "mongoose";
 
 /**
@@ -586,6 +587,25 @@ export const getUserStats = async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to fetch user stats",
+      message: err.message,
+    });
+  }
+};
+
+// Get profile bookmarks
+export const getProfileBookmarks = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const bookmarks = await Bookmark.find({ user: userId })
+      .populate("content", "title slug type")
+      .lean();
+    res.json({ bookmarks });
+  } catch (err) {
+    console.error("Error fetching bookmarks:", err);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch bookmarks",
       message: err.message,
     });
   }

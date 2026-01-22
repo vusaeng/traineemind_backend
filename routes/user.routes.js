@@ -15,12 +15,14 @@ router.use(auth);
 
 // Bookmarks
 router.get("/bookmarks", BookmarksController.list);
+
 router.post(
   "/bookmarks",
   body("contentId").isMongoId(),
   validationHandler,
   BookmarksController.add,
 );
+
 router.delete(
   "/bookmarks/:contentId",
   param("contentId").isMongoId(),
@@ -30,6 +32,7 @@ router.delete(
 
 // Progress
 router.get("/progress", ProgressController.list);
+
 router.post(
   "/progress",
   body("contentId").isMongoId(),
@@ -37,6 +40,16 @@ router.post(
   body("lastPositionSec").optional().isInt({ min: 0 }),
   validationHandler,
   ProgressController.upsert,
+);
+
+// User Tutorials
+router.get("/tutorials", UserController.listUserTutorials);
+
+router.post(
+  "/tutorials/:tutorialId/complete",
+  param("tutorialId").isMongoId(),
+  validationHandler,
+  UserController.completeTutorial,
 );
 
 export default router;

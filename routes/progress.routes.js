@@ -22,4 +22,10 @@ router.put("/:tutorialId", ProgressRoutes.updateProgress);
 // Mark as complete
 router.post("/:tutorialId/complete", ProgressRoutes.completeTutorial);
 
+// Notes
+router.post("/:tutorialId/notes", ProgressRoutes.addNote);
+router.get("/:tutorialId/notes", ProgressRoutes.getNotes);
+router.put("/:tutorialId/notes/:noteId", ProgressRoutes.updateNote);
+router.delete("/:tutorialId/notes/:noteId", ProgressRoutes.removeNote);
+
 export default router;

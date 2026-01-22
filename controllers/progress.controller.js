@@ -239,3 +239,187 @@ export async function upsert(req, res, next) {
     next(err);
   }
 }
+
+// Progress notes
+export const addNote = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { tutorialId } = req.params;
+    const { note, timestamp } = req.body;
+
+    const progress = await UserProgress.findOne({ userId, tutorialId });
+    if (!progress) {
+      return res.status(404).json({
+        success: false,
+        error: "Progress not found",
+      });
+    }
+
+    progress.notes.push({
+      content: note,
+      timestamp: timestamp || 0,
+      createdAt: new Date(),
+    });
+
+    await progress.save();
+
+    res.json({
+      success: true,
+      message: "Note added successfully",
+      data: {
+        note: progress.notes[progress.notes.length - 1],
+        totalNotes: progress.notes.length,
+      },
+    });
+  } catch (error) {
+    console.error("Error adding note:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to add note",
+    });
+  }
+};
+
+// Update a note
+export const updateNote = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { tutorialId, noteId } = req.params;
+    const { content } = req.body;
+
+    const progress = await UserProgress.findOne({ userId, tutorialId });
+    if (!progress) {
+      return res.status(404).json({
+        success: false,
+        error: "Progress not found",
+      });
+    }
+
+    const noteIndex = progress.notes.findIndex(
+      (note) => note._id.toString() === noteId,
+    );
+    if (noteIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        error: "Note not found",
+      });
+    }
+
+    progress.notes[noteIndex].content = content;
+    progress.notes[noteIndex].updatedAt = new Date();
+
+    await progress.save();
+
+    res.json({
+      success: true,
+      message: "Note updated successfully",
+      data: { note: progress.notes[noteIndex] },
+    });
+  } catch (error) {
+    console.error("Error updating note:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to update note",
+    });
+  }
+};
+
+// Delete a note
+export const removeNote = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { tutorialId, noteId } = req.params;
+
+    const progress = await UserProgress.findOne({ userId, tutorialId });
+    if (!progress) {
+      return res.status(404).json({
+        success: false,
+        error: "Progress not found",
+      });
+    }
+
+    const initialLength = progress.notes.length;
+    progress.notes = progress.notes.filter(
+      (note) => note._id.toString() !== noteId,
+    );
+
+    if (progress.notes.length === initialLength) {
+      return res.status(404).json({
+        success: false,
+        error: "Note not found",
+      });
+    }
+
+    await progress.save();
+
+    res.json({
+      success: true,
+      message: "Note deleted successfully",
+      data: { totalNotes: progress.notes.length },
+    });
+  } catch (error) {
+    console.error("Error deleting note:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete note",
+    });
+  }
+};
+
+// Get note by ID
+export const getNoteById = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { tutorialId, noteId } = req.params;
+
+    const progress = await UserProgress.findOne({
+      userId,
+      tutorialId,
+      "notes._id": noteId,
+    });
+
+    if (!progress) {
+      return res.status(404).json({
+        success: false,
+        error: "Note not found",
+      });
+    }
+
+    const note = progress.notes.find((n) => n._id.toString() === noteId);
+
+    res.json({
+      success: true,
+      data: { note },
+    });
+  } catch (error) {
+    console.error("Error fetching note:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch note",
+    });
+  }
+};
+
+export const getNotes = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { tutorialId } = req.params;
+    const progress = await UserProgress.findOne({ userId, tutorialId });
+    if (!progress) {
+      return res.status(404).json({
+        success: false,
+        error: "Progress not found",
+      });
+    }
+    res.json({
+      success: true,
+      data: { notes: progress.notes },
+    });
+  } catch (error) {
+    console.error("Error fetching notes:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch notes",
+    });
+  }
+};

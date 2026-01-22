@@ -165,6 +165,9 @@ router.put(
   ProfileController.updateLearningPreferences,
 );
 
+// Profile bookmarks
+router.get("/bookmarks", ProfileController.getProfileBookmarks);
+
 // Get user stats
 router.get("/stats", ProfileController.getUserStats);
 
