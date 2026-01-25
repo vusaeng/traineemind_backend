@@ -201,7 +201,7 @@ export async function login(req, res, next) {
         role: user.role, // role claim = "admin" or "user"
       },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" },
+      { expiresIn: "24h" },
     );
 
     // Update last login

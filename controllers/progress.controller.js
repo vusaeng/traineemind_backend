@@ -241,11 +241,14 @@ export async function upsert(req, res, next) {
 }
 
 // Progress notes
+// In your addNote controller function
 export const addNote = async (req, res) => {
   try {
     const userId = req.user._id;
     const { tutorialId } = req.params;
-    const { note, timestamp } = req.body;
+    const { content, timestamp } = req.body; // Changed from 'note' to 'content'
+
+    console.log("Adding note with data:", { content, timestamp }); // Debug log
 
     const progress = await UserProgress.findOne({ userId, tutorialId });
     if (!progress) {
@@ -255,21 +258,27 @@ export const addNote = async (req, res) => {
       });
     }
 
-    progress.notes.push({
-      content: note,
+    // Create the note object with ALL fields
+    const newNote = {
+      content: content, // This was probably 'note' before
       timestamp: timestamp || 0,
       createdAt: new Date(),
-    });
+    };
 
+    // console.log("Note to add:", newNote); // Debug log
+
+    progress.notes.push(newNote);
     await progress.save();
+
+    // Get the newly added note (with its generated _id)
+    const addedNote = progress.notes[progress.notes.length - 1];
+
+    // console.log("Added note:", addedNote); // Debug log
 
     res.json({
       success: true,
       message: "Note added successfully",
-      data: {
-        note: progress.notes[progress.notes.length - 1],
-        totalNotes: progress.notes.length,
-      },
+      data: addedNote, // Return the complete note
     });
   } catch (error) {
     console.error("Error adding note:", error);
@@ -420,6 +429,192 @@ export const getNotes = async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to fetch notes",
+    });
+  }
+};
+
+// Get all notes across tutorials for the user
+export const getAllNotes = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const progressWithNotes = await UserProgress.find({
+      userId,
+      "notes.0": { $exists: true }, // Only include documents with notes
+    })
+      .populate("tutorialId", "title slug") // Get tutorial info
+      .select("tutorialId notes");
+
+    // Format the response
+    const allNotes = progressWithNotes.flatMap((progress) =>
+      progress.notes.map((note) => ({
+        ...note.toObject(),
+        tutorialId: progress.tutorialId._id,
+        tutorialTitle: progress.tutorialId.title,
+        tutorialSlug: progress.tutorialId.slug,
+        progressId: progress._id,
+      })),
+    );
+
+    // Sort by creation date (newest first)
+    allNotes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json({
+      success: true,
+      data: {
+        notes: allNotes,
+        totalNotes: allNotes.length,
+        tutorialsWithNotes: progressWithNotes.length,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching all notes:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch notes",
+    });
+  }
+};
+
+// Get paginated notes across tutorials for the user
+export const getNotesPaginated = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    // Aggregation to get paginated notes
+    const result = await UserProgress.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+      { $unwind: "$notes" },
+      { $sort: { "notes.createdAt": -1 } },
+      {
+        $lookup: {
+          from: "contents",
+          localField: "tutorialId",
+          foreignField: "_id",
+          as: "tutorial",
+        },
+      },
+      { $unwind: "$tutorial" },
+      {
+        $project: {
+          _id: "$notes._id",
+          content: "$notes.content",
+          timestamp: "$notes.timestamp",
+          createdAt: "$notes.createdAt",
+          tutorialId: "$tutorialId",
+          tutorialTitle: "$tutorial.title",
+          tutorialSlug: "$tutorial.slug",
+          progressId: "$_id",
+        },
+      },
+      {
+        $facet: {
+          metadata: [{ $count: "totalNotes" }],
+          data: [{ $skip: skip }, { $limit: limit }],
+        },
+      },
+    ]);
+
+    const notes = result[0].data;
+    const totalNotes = result[0].metadata[0]?.totalNotes || 0;
+
+    res.json({
+      success: true,
+      data: {
+        notes,
+        pagination: {
+          page,
+          limit,
+          totalNotes,
+          pages: Math.ceil(totalNotes / limit),
+          hasNext: page * limit < totalNotes,
+          hasPrev: page > 1,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching paginated notes:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch notes",
+    });
+  }
+};
+
+// Get notes with search/filters
+
+export const searchNotes = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { query, tutorialId, dateFrom, dateTo } = req.query;
+
+    let matchStage = { userId: new mongoose.Types.ObjectId(userId) };
+
+    // Add filters
+    if (tutorialId) {
+      matchStage.tutorialId = new mongoose.Types.ObjectId(tutorialId);
+    }
+
+    const aggregation = [{ $match: matchStage }, { $unwind: "$notes" }];
+
+    // Date range filter
+    if (dateFrom || dateTo) {
+      const dateFilter = {};
+      if (dateFrom) dateFilter.$gte = new Date(dateFrom);
+      if (dateTo) dateFilter.$lte = new Date(dateTo);
+      aggregation.push({ $match: { "notes.createdAt": dateFilter } });
+    }
+
+    // Text search
+    if (query) {
+      aggregation.push({
+        $match: {
+          "notes.content": { $regex: query, $options: "i" },
+        },
+      });
+    }
+
+    aggregation.push(
+      {
+        $lookup: {
+          from: "contents",
+          localField: "tutorialId",
+          foreignField: "_id",
+          as: "tutorial",
+        },
+      },
+      { $unwind: "$tutorial" },
+      {
+        $project: {
+          _id: "$notes._id",
+          content: "$notes.content",
+          timestamp: "$notes.timestamp",
+          createdAt: "$notes.createdAt",
+          tutorialId: "$tutorialId",
+          tutorialTitle: "$tutorial.title",
+          tutorialSlug: "$tutorial.slug",
+        },
+      },
+      { $sort: { createdAt: -1 } },
+    );
+
+    const notes = await UserProgress.aggregate(aggregation);
+
+    res.json({
+      success: true,
+      data: {
+        notes,
+        total: notes.length,
+      },
+    });
+  } catch (error) {
+    console.error("Error searching notes:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to search notes",
     });
   }
 };

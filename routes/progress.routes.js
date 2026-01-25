@@ -22,10 +22,16 @@ router.put("/:tutorialId", ProgressRoutes.updateProgress);
 // Mark as complete
 router.post("/:tutorialId/complete", ProgressRoutes.completeTutorial);
 
-// Notes
-router.post("/:tutorialId/notes", ProgressRoutes.addNote);
+// // Note management
 router.get("/:tutorialId/notes", ProgressRoutes.getNotes);
+router.post("/:tutorialId/notes", ProgressRoutes.addNote);
 router.put("/:tutorialId/notes/:noteId", ProgressRoutes.updateNote);
 router.delete("/:tutorialId/notes/:noteId", ProgressRoutes.removeNote);
+router.get("/:tutorialId/notes/:noteId", ProgressRoutes.getNoteById);
+
+// All notes (across all tutorials)
+router.get("/notes/all", ProgressRoutes.getAllNotes);
+router.get("/notes", ProgressRoutes.getNotesPaginated);
+router.get("/notes/search", ProgressRoutes.searchNotes);
 
 export default router;
