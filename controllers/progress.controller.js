@@ -60,10 +60,10 @@ export const startTutorial = async (req, res) => {
     await userProgress.save();
 
     // 4. Optional: Update tutorial metrics (if you track this)
-    if (tutorial.metrics) {
+    /*     if (tutorial.metrics) {
       tutorial.metrics.startedCount = (tutorial.metrics.startedCount || 0) + 1;
       await tutorial.save();
-    }
+    } */
 
     res.status(201).json({
       success: true,
