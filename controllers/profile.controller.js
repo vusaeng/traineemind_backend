@@ -494,7 +494,7 @@ export const updateUserStats = async (userId) => {
               ],
             },
           },
-          totalLearningTime: { $sum: "$timeSpent" },
+          totalLearningTime: { $sum: "$lastPosition" },
         },
       },
     ]);

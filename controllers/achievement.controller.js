@@ -285,7 +285,7 @@ export const checkUserAchievements = async (userId, action, metadata = {}) => {
           metadata: {
             tutorialId: metadata.tutorialId,
             categoryId: metadata.categoryId,
-            timeSpent: metadata.timeSpent,
+            lastPosition: metadata.lastPosition,
             score: metadata.score,
           },
         });

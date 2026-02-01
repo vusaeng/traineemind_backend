@@ -55,7 +55,7 @@ const UserAchievementSchema = new mongoose.Schema(
     metadata: {
       tutorialId: mongoose.Schema.Types.ObjectId,
       categoryId: mongoose.Schema.Types.ObjectId,
-      timeSpent: Number, // in minutes
+      lastPosition: Number, // in minutes
       score: Number,
     },
 

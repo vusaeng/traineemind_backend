@@ -52,7 +52,7 @@ export const startTutorial = async (req, res) => {
       tutorialId,
       progress: 0, // Starting at 0%
       lastViewedAt: new Date(),
-      timeSpent: 0,
+      lastPosition: 0,
       notes: [],
       bookmarks: [],
     });
@@ -112,7 +112,7 @@ export const getProgress = async (req, res) => {
   }
 };
 
-// Add to progress.controller.js
+// Get progress for all tutorials for the user
 export const getUserProgress = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -139,11 +139,11 @@ export const updateProgress = async (req, res) => {
   try {
     const userId = req.user._id;
     const { tutorialId } = req.params;
-    const { progress, timeSpent } = req.body;
+    const { progress, lastPosition } = req.body;
     const updateData = {};
 
     if (progress !== undefined) updateData.progress = progress;
-    if (timeSpent !== undefined) updateData.timeSpent = timeSpent;
+    if (lastPosition !== undefined) updateData.lastPosition = lastPosition;
     updateData.lastViewedAt = new Date();
     const updatedProgress = await UserProgress.findOneAndUpdate(
       { userId, tutorialId },
