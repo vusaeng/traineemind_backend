@@ -210,7 +210,7 @@ export const completeTutorial = async (req, res) => {
  */
 export async function list(req, res, next) {
   try {
-    const progress = await UserProgress.find({ user: req.user.id })
+    const progress = await UserProgress.find({ user: req.user._id })
       .populate("content", "title slug type")
       .lean();
 
@@ -229,7 +229,7 @@ export async function upsert(req, res, next) {
     const { contentId, status, lastPositionSec, checkpoints } = req.body;
 
     const doc = await UserProgress.findOneAndUpdate(
-      { user: req.user.id, content: contentId },
+      { user: req.user._id, content: contentId },
       { status, lastPositionSec, checkpoints },
       { upsert: true, new: true, setDefaultsOnInsert: true },
     );

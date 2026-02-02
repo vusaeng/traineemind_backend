@@ -1,6 +1,8 @@
 // routes/progress.routes.js
 import { Router } from "express";
 import * as ProgressRoutes from "../controllers/progress.controller.js";
+import mongoose from "mongoose";
+import UserProgress from "../models/UserProgress.js";
 import auth from "../middleware/auth.js";
 
 const router = Router();
@@ -12,7 +14,7 @@ router.get("/", ProgressRoutes.getUserProgress);
 
 router.get("/debug/user-progress", async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user._id;
     const userProgress = await UserProgress.find({ userId });
 
     console.log("All UserProgress documents for user:", userId);
@@ -29,10 +31,10 @@ router.get("/debug/user-progress", async (req, res) => {
 
 router.get("/test-aggregation", async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user._id;
 
     const stats = await UserProgress.aggregate([
-      { $match: { userId: mongoose.Types.ObjectId(userId) } },
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
       {
         $group: {
           _id: null,
@@ -65,6 +67,56 @@ router.get("/test-aggregation", async (req, res) => {
     console.error("Aggregation test error:", error);
     res.status(500).json({ error: "Test failed" });
   }
+});
+
+router.get("/debug/user-progress-direct", async (req, res) => {
+  try {
+    const userId = req.user._id;
+    console.log("User ID from request:", userId);
+    console.log("User ID type:", typeof userId);
+
+    // Try as string
+    const docsAsString = await UserProgress.find({ userId: userId });
+    console.log("Found with string match:", docsAsString.length);
+
+    // Try as ObjectId
+    const objectId = new mongoose.Types.ObjectId(userId);
+    const docsAsObjectId = await UserProgress.find({ userId: objectId });
+    console.log("Found with ObjectId match:", docsAsObjectId.length);
+
+    res.json({
+      userId,
+      docsAsString: docsAsString.map((d) => ({
+        id: d._id,
+        progress: d.progress,
+        tutorialId: d.tutorialId,
+      })),
+      docsAsObjectId: docsAsObjectId.map((d) => ({
+        id: d._id,
+        progress: d.progress,
+        tutorialId: d.tutorialId,
+      })),
+    });
+  } catch (error) {
+    console.error("Debug error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/debug/request-info", async (req, res) => {
+  const userId = req.user._id;
+  console.log("=== Request Debug Info ===");
+  console.log("req.user:", req.user);
+  console.log("req.userId:", userId);
+  console.log("req.headers.authorization:", req.headers.authorization);
+  console.log("req.headers:", req.headers);
+
+  res.json({
+    user: req.user,
+    userId: req.userId,
+    hasAuthHeader: !!req.headers.authorization,
+    authHeader: req.headers.authorization,
+  });
 });
 
 // Start a tutorial

@@ -157,10 +157,21 @@ ProfileSchema.virtual("fullName").get(function () {
 ProfileSchema.methods.updateStats = async function () {
   const UserProgress = mongoose.model("UserProgress");
 
-  console.log("=== updateStats called for user:", this.user);
+  console.log("=== updateStats called ===");
+  console.log("User ID (raw):", this.user);
+
+  // Check if it's already an ObjectId
+  console.log("Is ObjectId?", mongoose.Types.ObjectId.isValid(this.user));
+
+  const userId = req.user._id;
+  console.log("Testing aggregation for userId:", userId);
 
   const stats = await UserProgress.aggregate([
-    { $match: { userId: this.user } },
+    {
+      $match: {
+        userId: userId, // Use the properly converted ObjectId
+      },
+    },
     {
       $group: {
         _id: null,
@@ -191,13 +202,11 @@ ProfileSchema.methods.updateStats = async function () {
   console.log("Aggregation result:", stats);
 
   if (stats.length > 0) {
-    console.log("Progress values found:", stats[0].progressValues);
-    console.log(
-      "Calculated - Completed:",
-      stats[0].tutorialsCompleted,
-      "In Progress:",
-      stats[0].tutorialsInProgress,
-    );
+    console.log("Calculated stats:", {
+      completed: stats[0].tutorialsCompleted,
+      inProgress: stats[0].tutorialsInProgress,
+      totalTime: stats[0].totalLearningTime,
+    });
 
     this.stats.tutorialsCompleted = stats[0].tutorialsCompleted;
     this.stats.tutorialsInProgress = stats[0].tutorialsInProgress;
@@ -205,6 +214,12 @@ ProfileSchema.methods.updateStats = async function () {
     await this.save();
 
     console.log("Updated profile stats:", this.stats);
+  } else {
+    console.log("No stats found - resetting to 0");
+    this.stats.tutorialsCompleted = 0;
+    this.stats.tutorialsInProgress = 0;
+    this.stats.totalLearningTime = 0;
+    await this.save();
   }
 
   return this;

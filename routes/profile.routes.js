@@ -173,7 +173,7 @@ router.get("/stats", ProfileController.getUserStats);
 // Force update user stats
 router.post("/force-update-stats", async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user._id;
     const profile = await Profile.findOne({ user: userId });
 
     if (!profile) {
