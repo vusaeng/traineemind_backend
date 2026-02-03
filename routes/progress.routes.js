@@ -4,6 +4,7 @@ import * as ProgressRoutes from "../controllers/progress.controller.js";
 import mongoose from "mongoose";
 import UserProgress from "../models/UserProgress.js";
 import auth from "../middleware/auth.js";
+import Profile from "../models/Profile.js";
 
 const router = Router();
 
@@ -117,6 +118,44 @@ router.get("/debug/request-info", async (req, res) => {
     hasAuthHeader: !!req.headers.authorization,
     authHeader: req.headers.authorization,
   });
+});
+
+// Force update user stats
+// Add this route to force update
+router.post("/force-update-profile-stats", async (req, res) => {
+  try {
+    const userId = req.user._id;
+    console.log("Force updating stats for user:", userId);
+
+    // Find profile by user ID
+    const profile = await Profile.findOne({ user: userId });
+
+    if (!profile) {
+      console.log("Profile not found for user:", userId);
+      return res.status(404).json({ error: "Profile not found" });
+    }
+
+    console.log("Before update - Profile stats:", profile.stats);
+    console.log("Profile.user value:", profile.user);
+    console.log("Profile.user type:", typeof profile.user);
+
+    // Call updateStats
+    const updatedProfile = await profile.updateStats();
+
+    console.log("After update - Profile stats:", updatedProfile.stats);
+
+    res.json({
+      success: true,
+      message: "Profile stats updated",
+      stats: updatedProfile.stats,
+    });
+  } catch (error) {
+    console.error("Force update error:", error);
+    res.status(500).json({
+      error: error.message,
+      stack: error.stack,
+    });
+  }
 });
 
 // Start a tutorial

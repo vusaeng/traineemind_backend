@@ -5,6 +5,7 @@ import { validationHandler } from "../middleware/validate.js";
 import * as ProfileController from "../controllers/profile.controller.js";
 import auth from "../middleware/auth.js";
 import { upload } from "../middleware/upload.js";
+import Profile from "../models/Profile.js";
 
 const router = Router();
 
@@ -170,26 +171,5 @@ router.get("/bookmarks", ProfileController.getProfileBookmarks);
 
 // Get user stats
 router.get("/stats", ProfileController.getUserStats);
-// Force update user stats
-router.post("/force-update-stats", async (req, res) => {
-  try {
-    const userId = req.user._id;
-    const profile = await Profile.findOne({ user: userId });
-
-    if (!profile) {
-      return res.status(404).json({ error: "Profile not found" });
-    }
-
-    await profile.updateStats();
-
-    res.json({
-      message: "Stats updated",
-      stats: profile.stats,
-    });
-  } catch (error) {
-    console.error("Force update error:", error);
-    res.status(500).json({ error: "Update failed" });
-  }
-});
 
 export default router;

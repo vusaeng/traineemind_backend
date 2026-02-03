@@ -158,71 +158,87 @@ ProfileSchema.methods.updateStats = async function () {
   const UserProgress = mongoose.model("UserProgress");
 
   console.log("=== updateStats called ===");
-  console.log("User ID (raw):", this.user);
+  console.log("this.user value:", this.user);
+  console.log("this.user type:", typeof this.user);
 
   // Check if it's already an ObjectId
   console.log("Is ObjectId?", mongoose.Types.ObjectId.isValid(this.user));
 
-  const userId = req.user._id;
-  console.log("Testing aggregation for userId:", userId);
-
-  const stats = await UserProgress.aggregate([
-    {
-      $match: {
-        userId: userId, // Use the properly converted ObjectId
-      },
-    },
-    {
-      $group: {
-        _id: null,
-        tutorialsCompleted: {
-          $sum: { $cond: [{ $eq: ["$progress", 100] }, 1, 0] },
-        },
-        tutorialsInProgress: {
-          $sum: {
-            $cond: [
-              {
-                $and: [{ $gt: ["$progress", 0] }, { $lt: ["$progress", 100] }],
-              },
-              1,
-              0,
-            ],
-          },
-        },
-        totalLearningTime: { $sum: "$lastPosition" },
-        // Add debugging fields
-        totalDocuments: { $sum: 1 },
-        progressValues: {
-          $push: { progress: "$progress", tutorialId: "$tutorialId" },
-        },
-      },
-    },
-  ]);
-
-  console.log("Aggregation result:", stats);
-
-  if (stats.length > 0) {
-    console.log("Calculated stats:", {
-      completed: stats[0].tutorialsCompleted,
-      inProgress: stats[0].tutorialsInProgress,
-      totalTime: stats[0].totalLearningTime,
-    });
-
-    this.stats.tutorialsCompleted = stats[0].tutorialsCompleted;
-    this.stats.tutorialsInProgress = stats[0].tutorialsInProgress;
-    this.stats.totalLearningTime = Math.floor(stats[0].totalLearningTime / 60);
-    await this.save();
-
-    console.log("Updated profile stats:", this.stats);
+  // Convert to ObjectId - FIXED VERSION
+  let userId;
+  if (this.user && mongoose.Types.ObjectId.isValid(this.user)) {
+    userId = new mongoose.Types.ObjectId(this.user);
+  } else if (this.user && this.user._id) {
+    userId = new mongoose.Types.ObjectId(this.user._id);
   } else {
-    console.log("No stats found - resetting to 0");
-    this.stats.tutorialsCompleted = 0;
-    this.stats.tutorialsInProgress = 0;
-    this.stats.totalLearningTime = 0;
-    await this.save();
+    console.error("Invalid user ID:", this.user);
+    return this; // Return without updating
   }
 
-  return this;
+  console.log("User ID for aggregation:", userId);
+
+  try {
+    const stats = await UserProgress.aggregate([
+      {
+        $match: {
+          userId: userId,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          tutorialsCompleted: {
+            $sum: { $cond: [{ $eq: ["$progress", 100] }, 1, 0] },
+          },
+          tutorialsInProgress: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $gt: ["$progress", 0] },
+                    { $lt: ["$progress", 100] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+          totalLearningTime: { $sum: "$lastPosition" },
+        },
+      },
+    ]);
+
+    console.log("Aggregation result:", stats);
+
+    if (stats.length > 0) {
+      console.log("Setting stats:", {
+        completed: stats[0].tutorialsCompleted,
+        inProgress: stats[0].tutorialsInProgress,
+        totalTime: stats[0].totalLearningTime,
+      });
+
+      this.stats.tutorialsCompleted = stats[0].tutorialsCompleted;
+      this.stats.tutorialsInProgress = stats[0].tutorialsInProgress;
+      this.stats.totalLearningTime = (
+        stats[0].totalLearningTime / 3600
+      ).toFixed(2); // convert to hours
+    } else {
+      console.log("No stats found - resetting to 0");
+      this.stats.tutorialsCompleted = 0;
+      this.stats.tutorialsInProgress = 0;
+      this.stats.totalLearningTime = 0;
+    }
+
+    // Save the profile
+    const savedProfile = await this.save();
+    console.log("Saved profile stats:", savedProfile.stats);
+
+    return savedProfile;
+  } catch (error) {
+    console.error("Error in updateStats:", error);
+    throw error;
+  }
 };
 
 export default mongoose.model("Profile", ProfileSchema);
