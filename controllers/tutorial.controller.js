@@ -9,6 +9,7 @@ export async function createTutorial(req, res, next) {
       title,
       excerpt,
       body,
+      author,
       categories,
       tags,
       project,
@@ -36,7 +37,7 @@ export async function createTutorial(req, res, next) {
     if (categories && categories.length) {
       // Filter valid ObjectIds
       categoryIds = categories.filter((cat) =>
-        mongoose.Types.ObjectId.isValid(cat)
+        mongoose.Types.ObjectId.isValid(cat),
       );
     }
 
@@ -113,7 +114,7 @@ export async function detail(req, res, next) {
     if (tutorial.categories && tutorial.categories.length > 0) {
       // Check if first category is an ObjectId
       const isObjectId = mongoose.Types.ObjectId.isValid(
-        tutorial.categories[0]
+        tutorial.categories[0],
       );
 
       if (isObjectId) {
@@ -153,7 +154,7 @@ export async function list(req, res, next) {
 
     const { page, limit, skip } = buildPagination(
       req.query.page,
-      req.query.limit
+      req.query.limit,
     );
 
     const filter = { type: "video" };
@@ -265,7 +266,7 @@ export async function updateTutorial(req, res, next) {
     // Update categories if provided
     if (categories !== undefined) {
       const validCategories = categories.filter((catId) =>
-        mongoose.Types.ObjectId.isValid(catId)
+        mongoose.Types.ObjectId.isValid(catId),
       );
       tutorial.categories = validCategories;
     }
