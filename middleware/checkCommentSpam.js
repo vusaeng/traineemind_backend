@@ -1,4 +1,7 @@
+import Content from "../models/Content.js";
+
 // Middleware to check for spam
+
 export const checkCommentSpam = async (req, res, next) => {
   try {
     const { email, content } = req.body;
@@ -32,7 +35,7 @@ export const checkCommentSpam = async (req, res, next) => {
       "viagra",
     ];
     const hasSpam = spamKeywords.some((keyword) =>
-      content.toLowerCase().includes(keyword)
+      content.toLowerCase().includes(keyword),
     );
 
     if (hasSpam) {

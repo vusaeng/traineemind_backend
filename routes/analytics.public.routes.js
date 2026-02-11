@@ -1,6 +1,7 @@
 // src/routes/analytics.public.routes.js
 import { Router } from "express";
 import Content from "../models/Content.js";
+import * as AnalyticsController from "../controllers/analytics.controller.js";
 
 const router = Router();
 
@@ -10,7 +11,7 @@ router.get("/analytics/public-summary", async (req, res, next) => {
       Content.countDocuments({ type: "video", isPublished: true }),
       Content.countDocuments({ type: "article", isPublished: true }),
       Content.countDocuments({ type: "project", isPublished: true }),
-      Content.countDocuments({ type: "blog", isPublished: true })
+      Content.countDocuments({ type: "blog", isPublished: true }),
     ]);
 
     // Simple learners estimate (you can replace with real user stats later)
@@ -21,11 +22,13 @@ router.get("/analytics/public-summary", async (req, res, next) => {
       articles,
       projects,
       blogs,
-      learners: learnersEstimate
+      learners: learnersEstimate,
     });
   } catch (err) {
     next(err);
   }
 });
+
+router.get("/analytics/public-overview", AnalyticsController.overview);
 
 export default router;
